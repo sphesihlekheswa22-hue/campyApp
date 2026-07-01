@@ -1,6 +1,9 @@
 import hashlib
+import json
 import secrets
 import smtplib
+import urllib.error
+import urllib.request
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 
@@ -25,28 +28,71 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def send_email(to: str, subject: str, body: str) -> None:
+def _log_email(to: str, subject: str, body: str) -> None:
+    print(f"[EMAIL] To: {to} | Subject: {subject} | Body: {body}")
+
+
+def send_via_brevo_api(to: str, subject: str, body: str) -> None:
+    payload = {
+        "sender": {"email": settings.smtp_from, "name": "JSE Analytics"},
+        "to": [{"email": to}],
+        "subject": subject,
+        "textContent": body,
+    }
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "api-key": settings.brevo_api_key,
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            if resp.status >= 400:
+                raise RuntimeError(f"Brevo API returned status {resp.status}")
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Brevo API error {e.code}: {detail}") from e
+
+
+def send_via_smtp(to: str, subject: str, body: str) -> None:
     msg = MIMEText(body)
     msg["Subject"] = subject
     msg["From"] = settings.smtp_from
     msg["To"] = to
 
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as server:
+        if settings.smtp_user and settings.smtp_password:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+        server.send_message(msg)
+
+
+def send_email(to: str, subject: str, body: str) -> None:
+    if settings.brevo_api_key:
+        try:
+            send_via_brevo_api(to, subject, body)
+            return
+        except Exception as e:
+            print(f"[EMAIL ERROR] Brevo API: {e}")
+            _log_email(to, subject, body)
+            return
+
     smtp_configured = bool(settings.smtp_host and settings.smtp_host not in ("localhost", "127.0.0.1"))
 
     if settings.app_env == "development" or not smtp_configured:
-        print(f"[EMAIL] To: {to} | Subject: {subject} | Body: {body}")
+        _log_email(to, subject, body)
         if not smtp_configured:
             return
 
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-            if settings.smtp_user and settings.smtp_password:
-                server.starttls()
-                server.login(settings.smtp_user, settings.smtp_password)
-            server.send_message(msg)
+        send_via_smtp(to, subject, body)
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
-        print(f"[EMAIL FALLBACK] To: {to} | Subject: {subject} | Body: {body}")
+        print(f"[EMAIL ERROR] SMTP: {e}")
+        _log_email(to, subject, body)
 
 
 def send_pin_email(email: str, pin: str, registration_id: str) -> None:

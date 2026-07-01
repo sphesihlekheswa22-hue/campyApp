@@ -38,7 +38,19 @@ git push -u origin main
 
 SMTP is **optional** for first deploy. Leave `SMTP_HOST` empty — PINs and reset tokens are printed in Render logs instead.
 
-### Optional: real email (SMTP)
+### Brevo on Render (recommended)
+
+Render **blocks SMTP port 587**, so SMTP times out. Use Brevo's **HTTP API** instead:
+
+1. Brevo → [SMTP & API](https://app.brevo.com/settings/keys/smtp) → **API Keys** → **Generate a new API key**
+2. In Render, set:
+   - `BREVO_API_KEY` = your API key
+   - `SMTP_FROM` = `sphesihlekheswa22@gmail.com` (or your verified sender)
+3. Save — Render redeploys. Emails send over HTTPS (port 443), which Render allows.
+
+SMTP vars (`SMTP_HOST`, etc.) are only needed for local/Docker dev — not on Render.
+
+### Optional: SMTP (local dev only)
 
 Add these in Render **Environment** when you want registration emails to work:
 

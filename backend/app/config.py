@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "noreply@jse-analytics.com"
+    brevo_api_key: str = ""
     app_env: str = "development"
     platform_owner_email: str = "admin@bluemachines.com"
     platform_owner_password: str = "Admin123!"

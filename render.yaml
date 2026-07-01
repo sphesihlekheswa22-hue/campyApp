@@ -34,3 +34,5 @@ services:
         value: ""
       - key: SMTP_FROM
         value: noreply@jse-analytics.com
+      - key: BREVO_API_KEY
+        sync: false
