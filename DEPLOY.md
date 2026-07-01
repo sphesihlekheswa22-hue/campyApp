@@ -35,7 +35,22 @@ git push -u origin main
 4. When prompted, set **sync: false** env vars:
    - `DATABASE_URL` — paste your Neon connection string
    - `PLATFORM_OWNER_PASSWORD` — strong password for `admin@bluemachines.com`
-   - (Optional) SMTP vars if you want real email
+
+SMTP is **optional** for first deploy. Leave `SMTP_HOST` empty — PINs and reset tokens are printed in Render logs instead.
+
+### Optional: real email (SMTP)
+
+Add these in Render **Environment** when you want registration emails to work:
+
+| Key | Example (Gmail) | Example (Brevo/Sendinblue) |
+|-----|-----------------|----------------------------|
+| `SMTP_HOST` | `smtp.gmail.com` | `smtp-relay.brevo.com` |
+| `SMTP_PORT` | `587` | `587` |
+| `SMTP_USER` | your Gmail address | your Brevo login email |
+| `SMTP_PASSWORD` | [App Password](https://myaccount.google.com/apppasswords) | Brevo SMTP key |
+| `SMTP_FROM` | `noreply@yourdomain.com` | `noreply@yourdomain.com` |
+
+**Gmail notes:** turn on 2FA, then create an App Password — do not use your normal Gmail password.
 
 ### Option B — Manual web service
 

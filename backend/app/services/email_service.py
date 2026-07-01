@@ -31,8 +31,12 @@ def send_email(to: str, subject: str, body: str) -> None:
     msg["From"] = settings.smtp_from
     msg["To"] = to
 
-    if settings.app_env == "development":
+    smtp_configured = bool(settings.smtp_host and settings.smtp_host not in ("localhost", "127.0.0.1"))
+
+    if settings.app_env == "development" or not smtp_configured:
         print(f"[EMAIL] To: {to} | Subject: {subject} | Body: {body}")
+        if not smtp_configured:
+            return
 
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
@@ -42,6 +46,7 @@ def send_email(to: str, subject: str, body: str) -> None:
             server.send_message(msg)
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
+        print(f"[EMAIL FALLBACK] To: {to} | Subject: {subject} | Body: {body}")
 
 
 def send_pin_email(email: str, pin: str, registration_id: str) -> None:

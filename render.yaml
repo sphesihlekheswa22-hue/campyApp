@@ -25,12 +25,12 @@ services:
       - key: PLATFORM_OWNER_PASSWORD
         sync: false
       - key: SMTP_HOST
-        sync: false
+        value: ""
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        sync: false
+        value: ""
       - key: SMTP_PASSWORD
-        sync: false
+        value: ""
       - key: SMTP_FROM
-        sync: false
+        value: noreply@jse-analytics.com
