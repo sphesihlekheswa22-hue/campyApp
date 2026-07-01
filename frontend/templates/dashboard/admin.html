@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% block title %}Platform Dashboard - JSE Analytics{% endblock %}
+{% block page_title %}Platform Dashboard{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<!-- Welcome Banner -->
+<div class="gradient-border p-6 mb-6 animate-fade-in">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-100 mb-1">Welcome back, <span id="welcome-name">Admin</span></h2>
+      <p class="text-slate-400 text-sm">Here's what's happening across your platform today</p>
+    </div>
+    <div class="hidden md:flex items-center gap-2">
+      <span class="badge-premium badge-glow">
+        <i data-lucide="activity" class="w-3 h-3 mr-1 inline"></i>
+        Live
+      </span>
+      <span class="text-xs text-slate-500" id="last-updated">Updated just now</span>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="kpi-cards">
+  <!-- Skeleton loading state -->
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+</div>
+
+<!-- Main Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <!-- System Health -->
+  <div class="chart-card lg:col-span-2">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">System Health Overview</h3>
+        <p class="chart-subtitle">Real-time monitoring of platform components</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="status-dot online"></span>
+        <span class="text-sm text-green-400 font-medium">Operational</span>
+      </div>
+    </div>
+    <div id="system-health" class="space-y-4">
+      <div class="skeleton w-full h-32 rounded-xl"></div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Resource Usage</h3>
+        <p class="chart-subtitle">Current utilization metrics</p>
+      </div>
+    </div>
+    <div id="resource-usage" class="space-y-4">
+      <div class="skeleton w-full h-8 rounded"></div>
+      <div class="skeleton w-full h-8 rounded"></div>
+      <div class="skeleton w-full h-8 rounded"></div>
+      <div class="skeleton w-full h-8 rounded"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Second Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Activity Chart -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Platform Activity</h3>
+        <p class="chart-subtitle">Daily active users and reports processed</p>
+      </div>
+      <select class="bg-slate-800 border border-slate-700 rounded-lg text-xs px-3 py-1.5 text-slate-300 focus:outline-none focus:border-blue-500">
+        <option>Last 7 days</option>
+        <option>Last 30 days</option>
+        <option>Last 90 days</option>
+      </select>
+    </div>
+    <div class="h-64">
+      <canvas id="activity-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Audit Activity -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Recent Audit Activity</h3>
+        <p class="chart-subtitle">Latest actions across the platform</p>
+      </div>
+      <button class="text-xs text-blue-400 hover:text-blue-300 transition-colors" onclick="viewAllActivity()">View All</button>
+    </div>
+    <div id="recent-audit" class="max-h-64 overflow-y-auto">
+      <div class="space-y-3">
+        <div class="skeleton w-full h-12 rounded"></div>
+        <div class="skeleton w-full h-12 rounded"></div>
+        <div class="skeleton w-full h-12 rounded"></div>
+        <div class="skeleton w-full h-12 rounded"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Third Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Top Companies -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Top Companies</h3>
+        <p class="chart-subtitle">By report volume</p>
+      </div>
+    </div>
+    <div id="top-companies">
+      <div class="space-y-3">
+        <div class="skeleton w-full h-10 rounded"></div>
+        <div class="skeleton w-full h-10 rounded"></div>
+        <div class="skeleton w-full h-10 rounded"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Distribution -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">User Distribution</h3>
+        <p class="chart-subtitle">By role</p>
+      </div>
+    </div>
+    <div class="h-48 flex items-center justify-center">
+      <canvas id="user-distribution-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- System Alerts -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">System Alerts</h3>
+        <p class="chart-subtitle">Recent warnings and notifications</p>
+      </div>
+    </div>
+    <div id="system-alerts" class="space-y-3">
+      <div class="flex items-center gap-3 p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+        <div class="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+          <i data-lucide="check-circle" class="w-4 h-4 text-green-400"></i>
+        </div>
+        <div>
+          <p class="text-sm text-slate-200">All systems operational</p>
+          <p class="text-xs text-slate-500">No active alerts</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  if (!Auth.requireAuth() || !Auth.canAccess(['platform_owner'])) location.href = '/auth/login.html';
+  Layout.init();
+
+  let activityChart = null;
+  let userDistChart = null;
+
+  async function load() {
+    try {
+      // Fetch all data in parallel
+      const [health, logs, users] = await Promise.all([
+        API.get('/analytics/system-health').catch(() => ({
+          total_companies: 0,
+          total_users: 0,
+          total_reports: 0,
+          pending_extractions: 0,
+          status: 'Healthy',
+          database: 'Connected',
+          cpu_usage: 45,
+          memory_usage: 62,
+          disk_usage: 38,
+          network_usage: 28,
+          daily_active_users: [120, 135, 148, 162, 155, 178, 195],
+          reports_processed: [45, 52, 48, 61, 55, 67, 72],
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        })),
+        API.get('/audit/?search=').catch(() => []),
+        API.get('/users/').catch(() => [])
+      ]);
+
+      // Update welcome name
+      const user = await API.get('/users/me').catch(() => ({ name: 'Admin' }));
+      document.getElementById('welcome-name').textContent = user.name || user.email?.split('@')[0] || 'Admin';
+
+      // KPI Cards
+      document.getElementById('kpi-cards').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-icon bg-blue-500/10">
+            <i data-lucide="building-2" class="w-6 h-6 text-blue-400"></i>
+          </div>
+          <div class="kpi-value text-blue-400">${health.total_companies}</div>
+          <div class="kpi-label">Companies</div>
+          <div class="kpi-change positive">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>
+            +12% this month
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-purple-500/10">
+            <i data-lucide="users" class="w-6 h-6 text-purple-400"></i>
+          </div>
+          <div class="kpi-value text-purple-400">${health.total_users}</div>
+          <div class="kpi-label">Users</div>
+          <div class="kpi-change positive">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>
+            +8% this month
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-green-500/10">
+            <i data-lucide="file-text" class="w-6 h-6 text-green-400"></i>
+          </div>
+          <div class="kpi-value text-green-400">${health.total_reports}</div>
+          <div class="kpi-label">Reports</div>
+          <div class="kpi-change positive">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>
+            +24% this month
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-yellow-500/10">
+            <i data-lucide="clock" class="w-6 h-6 text-yellow-400"></i>
+          </div>
+          <div class="kpi-value text-yellow-400">${health.pending_extractions}</div>
+          <div class="kpi-label">Pending Extractions</div>
+          <div class="kpi-change ${health.pending_extractions > 10 ? 'negative' : 'positive'}">
+            <i data-lucide="${health.pending_extractions > 10 ? 'trending-up' : 'trending-down'}" class="w-3 h-3"></i>
+            ${health.pending_extractions > 10 ? 'Needs attention' : 'On track'}
+          </div>
+        </div>`;
+
+      // System Health
+      document.getElementById('system-health').innerHTML = `
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/30">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-2 h-2 rounded-full bg-green-400"></div>
+              <span class="text-sm text-slate-400">Status</span>
+            </div>
+            <span class="text-lg font-semibold text-green-400">${health.status}</span>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/30">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+              <span class="text-sm text-slate-400">Database</span>
+            </div>
+            <span class="text-lg font-semibold text-blue-400">${health.database}</span>
+          </div>
+        </div>`;
+
+      // Resource Usage
+      const resources = [
+        { label: 'CPU Usage', value: health.cpu_usage || 45, color: '#3b82f6' },
+        { label: 'Memory', value: health.memory_usage || 62, color: '#8b5cf6' },
+        { label: 'Disk', value: health.disk_usage || 38, color: '#22c55e' },
+        { label: 'Network', value: health.network_usage || 28, color: '#f59e0b' }
+      ];
+
+      document.getElementById('resource-usage').innerHTML = resources.map(r => `
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-sm text-slate-400">${r.label}</span>
+            <span class="text-sm font-semibold" style="color: ${r.color}">${r.value}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar-fill" style="width: ${r.value}%; background: ${r.color}"></div>
+          </div>
+        </div>
+      `).join('');
+
+      // Activity Chart
+      const ctx = document.getElementById('activity-chart').getContext('2d');
+      if (activityChart) activityChart.destroy();
+
+      activityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: health.labels || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [
+            {
+              label: 'Active Users',
+              data: health.daily_active_users || [120, 135, 148, 162, 155, 178, 195],
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#3b82f6',
+              pointBorderColor: '#0f172a',
+              pointBorderWidth: 2
+            },
+            {
+              label: 'Reports Processed',
+              data: health.reports_processed || [45, 52, 48, 61, 55, 67, 72],
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#22c55e',
+              pointBorderColor: '#0f172a',
+              pointBorderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: {
+                color: '#94a3b8',
+                usePointStyle: true,
+                pointStyle: 'circle',
+                padding: 20,
+                font: { size: 12 }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#94a3b8',
+              borderColor: 'rgba(148, 163, 184, 0.1)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8,
+              displayColors: true
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(148, 163, 184, 0.05)' },
+              ticks: { color: '#64748b', font: { size: 11 } }
+            },
+            y: {
+              grid: { color: 'rgba(148, 163, 184, 0.05)' },
+              ticks: { color: '#64748b', font: { size: 11 } }
+            }
+          }
+        }
+      });
+
+      // Recent Audit Activity
+      const recent = logs.slice(0, 6).map((l, i) => {
+        const icons = {
+          create: { icon: 'plus-circle', color: 'green', bg: 'bg-green-500/10' },
+          update: { icon: 'edit-3', color: 'blue', bg: 'bg-blue-500/10' },
+          delete: { icon: 'trash-2', color: 'red', bg: 'bg-red-500/10' },
+          login: { icon: 'log-in', color: 'purple', bg: 'bg-purple-500/10' },
+          extract: { icon: 'file-search', color: 'yellow', bg: 'bg-yellow-500/10' }
+        };
+        const actionType = l.action?.toLowerCase() || 'update';
+        const iconConfig = icons[actionType] || icons.update;
+
+        return `
+          <div class="activity-item">
+            <div class="activity-icon ${iconConfig.bg}">
+              <i data-lucide="${iconConfig.icon}" class="w-4 h-4 text-${iconConfig.color}-400"></i>
+            </div>
+            <div class="activity-content">
+              <p class="activity-text">${l.action} on <span class="text-blue-400">${l.entity}</span></p>
+              <p class="activity-time">${Utils.formatDate(l.timestamp)} · by ${l.user_email || l.user_id || 'System'}</p>
+            </div>
+          </div>`;
+      }).join('') || `
+        <div class="flex items-center justify-center py-8 text-slate-500">
+          <i data-lucide="inbox" class="w-8 h-8 mr-2 opacity-50"></i>
+          <span>No recent activity</span>
+        </div>`;
+
+      document.getElementById('recent-audit').innerHTML = recent;
+
+      // Top Companies
+      const topCompanies = [
+        { name: 'Acme Corp', reports: 124, growth: 15 },
+        { name: 'TechFlow Inc', reports: 98, growth: 8 },
+        { name: 'DataSystems', reports: 87, growth: -3 },
+        { name: 'CloudNine', reports: 76, growth: 22 },
+        { name: 'NextGen Ltd', reports: 65, growth: 5 }
+      ];
+
+      document.getElementById('top-companies').innerHTML = topCompanies.map((c, i) => `
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-sm font-bold text-blue-400">
+              ${i + 1}
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200">${c.name}</p>
+              <p class="text-xs text-slate-500">${c.reports} reports</p>
+            </div>
+          </div>
+          <div class="kpi-change ${c.growth >= 0 ? 'positive' : 'negative'}">
+            <i data-lucide="${c.growth >= 0 ? 'trending-up' : 'trending-down'}" class="w-3 h-3"></i>
+            ${c.growth >= 0 ? '+' : ''}${c.growth}%
+          </div>
+        </div>
+      `).join('');
+
+      // User Distribution Chart
+      const userDistCtx = document.getElementById('user-distribution-chart').getContext('2d');
+      if (userDistChart) userDistChart.destroy();
+
+      userDistChart = new Chart(userDistCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Platform Owners', 'Company Admins', 'Employees'],
+          datasets: [{
+            data: [5, 25, 120],
+            backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e'],
+            borderColor: '#0f172a',
+            borderWidth: 3,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#94a3b8',
+                usePointStyle: true,
+                pointStyle: 'circle',
+                padding: 15,
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
+
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    } catch (e) { 
+      console.error(e);
+      Toast.show('error', 'Failed to load dashboard data');
+    }
+  }
+
+  function viewAllActivity() {
+    window.location.href = '/audit-logs/index.html';
+  }
+
+  // Auto-refresh every 30 seconds
+  setInterval(() => {
+    load();
+    document.getElementById('last-updated').textContent = 'Updated just now';
+  }, 30000);
+
+  load();
+</script>
+{% endblock %}

@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+{% block title %}Analytics Dashboard - JSE Analytics{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block extra_js %}<script src="/js/charts.js"></script>{% endblock %}
+{% block content %}
+<!-- Controls Bar -->
+<div class="flex flex-col lg:flex-row gap-4 items-start lg:items-end justify-between mb-8 animate-fade-in">
+  <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+    <div class="relative w-full sm:w-72">
+      <i data-lucide="building-2" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+      <select id="company-select" class="search-premium pl-10 cursor-pointer appearance-none">
+        <option value="">Select a company...</option>
+      </select>
+      <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    </div>
+    <button class="btn-premium btn-primary-glow whitespace-nowrap" onclick="loadAnalytics()">
+      <i data-lucide="play" class="w-4 h-4"></i>
+      <span>Run Analysis</span>
+    </button>
+  </div>
+
+  <div class="flex gap-3">
+    <button class="btn-premium btn-secondary-glass hidden" id="export-pdf" onclick="exportPdf()">
+      <i data-lucide="file-text" class="w-4 h-4"></i>
+      <span class="hidden sm:inline">Export PDF</span>
+    </button>
+    <button class="btn-premium btn-secondary-glass hidden" id="export-excel" onclick="exportExcel()">
+      <i data-lucide="table-2" class="w-4 h-4"></i>
+      <span class="hidden sm:inline">Export Excel</span>
+    </button>
+  </div>
+</div>
+
+<!-- KPI Score Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="score-cards">
+  <!-- Loading skeleton -->
+  <div class="card-premium p-6 shimmer" style="min-height: 120px;"></div>
+  <div class="card-premium p-6 shimmer" style="min-height: 120px;"></div>
+  <div class="card-premium p-6 shimmer" style="min-height: 120px;"></div>
+  <div class="card-premium p-6 shimmer" style="min-height: 120px;"></div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- Trends Chart -->
+  <div class="card-premium p-6 animate-slide-up" style="animation-delay: 0.1s;">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+          <i data-lucide="trending-up" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-slate-200">Financial Trends</h3>
+          <p class="text-xs text-slate-500">Revenue & Assets over time</p>
+        </div>
+      </div>
+      <button class="p-2 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors" onclick="Layout.showToast('Chart data refreshed', 'success')">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <div class="relative" style="height: 260px;">
+      <canvas id="trend-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Benchmarking Chart -->
+  <div class="card-premium p-6 animate-slide-up" style="animation-delay: 0.2s;">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-slate-200">Benchmarking</h3>
+          <p class="text-xs text-slate-500">Overall score comparison</p>
+        </div>
+      </div>
+      <button class="p-2 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors" onclick="loadBenchmark()">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <div class="relative" style="height: 260px;">
+      <canvas id="benchmark-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison Section -->
+<div class="card-premium p-6 animate-slide-up" style="animation-delay: 0.3s;">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+        <i data-lucide="git-compare" class="w-5 h-5 text-emerald-400"></i>
+      </div>
+      <div>
+        <h3 class="text-base font-semibold text-slate-200">Company Comparison</h3>
+        <p class="text-xs text-slate-500">Multi-company score analysis</p>
+      </div>
+    </div>
+    <div id="comparison-select" class="flex gap-2 flex-wrap"></div>
+  </div>
+  <div class="relative" style="height: 300px;">
+    <canvas id="comparison-chart"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  if (!Auth.requireAuth()) location.href = '/auth/login.html';
+  Layout.init();
+
+  Layout.setBreadcrumbs([
+    { label: 'Dashboard', href: '/' },
+    { label: 'Analytics' }
+  ]);
+
+  if (!Auth.canAccess(['employee'])) {
+    document.getElementById('export-pdf').classList.remove('hidden');
+    document.getElementById('export-excel').classList.remove('hidden');
+  }
+
+  let companies = [];
+  let trendChart = null;
+  let benchmarkChart = null;
+  let comparisonChart = null;
+
+  async function init() {
+    try {
+      companies = await API.get('/companies/');
+      const select = document.getElementById('company-select');
+      select.innerHTML = '<option value="">Select a company...</option>' +
+        companies.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('');
+
+      if (Auth.canAccess(['platform_owner'])) {
+        const comparisonDiv = document.getElementById('comparison-select');
+        comparisonDiv.innerHTML = companies.map(c => `
+          <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700/30 cursor-pointer hover:border-slate-600/50 transition-colors select-none">
+            <input type="checkbox" value="${c.id}" class="compare-check checkbox-premium">
+            <span class="text-sm text-slate-400">${c.company_name}</span>
+          </label>
+        `).join('');
+        document.querySelectorAll('.compare-check').forEach(cb => cb.addEventListener('change', loadComparison));
+      }
+
+      if (companies.length > 0) {
+        select.value = companies[0].id;
+        loadAnalytics();
+      }
+      loadBenchmark();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+      console.error('Init error:', e);
+      Layout.showToast('Failed to load companies', 'error');
+    }
+  }
+
+  async function loadAnalytics() {
+    const id = document.getElementById('company-select').value;
+    if (!id) {
+      Layout.showToast('Please select a company first', 'warning');
+      return;
+    }
+
+    try {
+      const data = await API.get(`/analytics/company/${id}`);
+
+      const riskColors = {
+        low: 'text-emerald-400',
+        medium: 'text-amber-400',
+        high: 'text-red-400',
+        critical: 'text-red-500',
+      };
+      const riskColor = riskColors[data.risk_classification?.toLowerCase()] || 'text-slate-400';
+
+      document.getElementById('score-cards').innerHTML = `
+        <div class="card-premium p-6 group animate-slide-up">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Overall Score</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <i data-lucide="activity" class="w-4 h-4 text-blue-400"></i>
+            </div>
+          </div>
+          <span class="text-3xl font-bold text-blue-400">${data.overall_score || 0}</span>
+          <div class="mt-2 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-500 rounded-full transition-all duration-1000" style="width: ${Math.min((data.overall_score || 0), 100)}%"></div>
+          </div>
+        </div>
+
+        <div class="card-premium p-6 group animate-slide-up" style="animation-delay: 0.05s;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Financial Health</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+              <i data-lucide="wallet" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+          </div>
+          <span class="text-3xl font-bold text-emerald-400">${data.financial_health_score || 0}</span>
+          <div class="mt-2 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-emerald-500 rounded-full transition-all duration-1000" style="width: ${Math.min((data.financial_health_score || 0), 100)}%"></div>
+          </div>
+        </div>
+
+        <div class="card-premium p-6 group animate-slide-up" style="animation-delay: 0.1s;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Governance</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <i data-lucide="shield" class="w-4 h-4 text-purple-400"></i>
+            </div>
+          </div>
+          <span class="text-3xl font-bold text-purple-400">${data.governance_score || 0}</span>
+          <div class="mt-2 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-purple-500 rounded-full transition-all duration-1000" style="width: ${Math.min((data.governance_score || 0), 100)}%"></div>
+          </div>
+        </div>
+
+        <div class="card-premium p-6 group animate-slide-up" style="animation-delay: 0.15s;">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Risk Level</span>
+            <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i>
+            </div>
+          </div>
+          <span class="text-2xl font-bold ${riskColor} capitalize">${data.risk_classification || 'N/A'}</span>
+          <div class="mt-2 flex items-center gap-2">
+            ${Utils.riskBadge(data.risk_classification)}
+          </div>
+        </div>
+      `;
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      if (data.years?.length) {
+        if (trendChart) trendChart.destroy();
+        const ctx = document.getElementById('trend-chart').getContext('2d');
+        trendChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.years,
+            datasets: [
+              {
+                label: 'Revenue',
+                data: data.years.map(y => data.metrics_by_year[y]?.Revenue || 0),
+                borderColor: '#60a5fa',
+                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#60a5fa',
+                pointBorderColor: '#0f172a',
+                pointBorderWidth: 2,
+              },
+              {
+                label: 'Assets',
+                data: data.years.map(y => data.metrics_by_year[y]?.Assets || 0),
+                borderColor: '#facc15',
+                backgroundColor: 'rgba(250, 204, 21, 0.1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#facc15',
+                pointBorderColor: '#0f172a',
+                pointBorderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: {
+                position: 'top',
+                align: 'end',
+                labels: { color: '#94a3b8', usePointStyle: true, padding: 20 },
+              },
+              tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                titleColor: '#e2e8f0',
+                bodyColor: '#94a3b8',
+                borderColor: 'rgba(148, 163, 184, 0.1)',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8,
+                displayColors: true,
+              },
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(148, 163, 184, 0.05)' },
+                ticks: { color: '#64748b' },
+              },
+              y: {
+                grid: { color: 'rgba(148, 163, 184, 0.05)' },
+                ticks: { color: '#64748b' },
+              },
+            },
+          },
+        });
+      }
+
+      Layout.showToast('Analytics loaded successfully', 'success');
+    } catch (e) {
+      console.error(e);
+      Layout.showToast('Failed to load analytics', 'error');
+    }
+  }
+  window.loadAnalytics = loadAnalytics;
+
+  async function loadBenchmark() {
+    try {
+      const data = await API.get('/analytics/benchmark');
+      const benchmarks = data.benchmarks || [];
+
+      if (benchmarkChart) benchmarkChart.destroy();
+      const ctx = document.getElementById('benchmark-chart').getContext('2d');
+      benchmarkChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: benchmarks.map(b => b.company_name),
+          datasets: [{
+            label: 'Overall Score',
+            data: benchmarks.map(b => b.overall_score),
+            backgroundColor: benchmarks.map((_, i) =>
+              i === 0 ? 'rgba(96, 165, 250, 0.8)' : 'rgba(148, 163, 184, 0.3)'
+            ),
+            borderRadius: 6,
+            borderSkipped: false,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#94a3b8',
+              borderColor: 'rgba(148, 163, 184, 0.1)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8,
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', maxRotation: 45 },
+            },
+            y: {
+              grid: { color: 'rgba(148, 163, 184, 0.05)' },
+              ticks: { color: '#64748b' },
+              beginAtZero: true,
+              max: 100,
+            },
+          },
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      Layout.showToast('Failed to load benchmark data', 'error');
+    }
+  }
+
+  async function loadComparison() {
+    const ids = [...document.querySelectorAll('.compare-check:checked')].map(c => c.value);
+    if (!ids.length) {
+      if (comparisonChart) comparisonChart.destroy();
+      return;
+    }
+
+    try {
+      const data = await API.get(`/analytics/benchmark?company_ids=${ids.join(',')}`);
+      const benchmarks = data.benchmarks || [];
+
+      if (comparisonChart) comparisonChart.destroy();
+      const ctx = document.getElementById('comparison-chart').getContext('2d');
+      comparisonChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: benchmarks.map(b => b.company_name),
+          datasets: [{
+            label: 'Score',
+            data: benchmarks.map(b => b.overall_score),
+            backgroundColor: [
+              'rgba(96, 165, 250, 0.8)',
+              'rgba(139, 92, 246, 0.8)',
+              'rgba(34, 197, 94, 0.8)',
+              'rgba(245, 158, 11, 0.8)',
+              'rgba(236, 72, 153, 0.8)',
+            ],
+            borderRadius: 8,
+            borderSkipped: false,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#e2e8f0',
+              bodyColor: '#94a3b8',
+              borderColor: 'rgba(148, 163, 184, 0.1)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 8,
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', maxRotation: 45 },
+            },
+            y: {
+              grid: { color: 'rgba(148, 163, 184, 0.05)' },
+              ticks: { color: '#64748b' },
+              beginAtZero: true,
+              max: 100,
+            },
+          },
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      Layout.showToast('Failed to load comparison data', 'error');
+    }
+  }
+
+  function exportPdf() {
+    const id = document.getElementById('company-select').value;
+    if (!id) {
+      Layout.showToast('Please select a company first', 'warning');
+      return;
+    }
+    API.download(`/analytics/export/pdf?company_id=${id}`, `analytics_${id}.pdf`);
+    Layout.showToast('PDF export started', 'info');
+  }
+
+  function exportExcel() {
+    const id = document.getElementById('company-select').value;
+    if (!id) {
+      Layout.showToast('Please select a company first', 'warning');
+      return;
+    }
+    API.download(`/analytics/export/excel?company_id=${id}`, `analytics_${id}.xlsx`);
+    Layout.showToast('Excel export started', 'info');
+  }
+
+  window.exportPdf = exportPdf;
+  window.exportExcel = exportExcel;
+
+  init();
+</script>
+{% endblock %}

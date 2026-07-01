@@ -1,0 +1,36 @@
+# Render Blueprint — JSE Analytics Platform
+# Connect this repo on https://dashboard.render.com/blueprints
+
+services:
+  - type: web
+    name: jse-analytics
+    runtime: python
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: bash scripts/render-build.sh
+    startCommand: bash scripts/start.sh
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: PLATFORM_OWNER_EMAIL
+        value: admin@bluemachines.com
+      - key: PLATFORM_OWNER_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false

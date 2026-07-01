@@ -1,0 +1,58 @@
+/* Disable expensive animations that cause jank */
+.shimmer {
+  animation: none !important;
+  background: rgba(30, 41, 59, 0.55);
+}
+
+.animate-fade-in,
+.animate-slide-up,
+.animate-slide-down,
+.animate-scale-in,
+.animate-slide-right,
+.animate-spin-slow,
+.animate-spin-reverse {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Smoother scrolling */
+#page-scroll {
+  scroll-behavior: auto;
+  contain: layout style;
+}
+
+.card-premium,
+.kpi-card,
+.chart-card,
+.gradient-border {
+  contain: layout paint;
+}
+
+/* Auth page: disable heavy effects */
+.auth-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.bg-mesh,
+.orb,
+.ring,
+.noise,
+.ring-container .ring {
+  animation: none !important;
+}
+
+.toast {
+  backdrop-filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,56 @@
+{% extends "auth_base.html" %}
+{% block title %}Confirm Account - JSE Analytics{% endblock %}
+{% block content %}
+<h2 class="text-xl font-semibold text-white text-center mb-1">Activate account</h2>
+<p class="text-sm text-slate-500 text-center mb-6">Enter your registration ID and PIN from email</p>
+
+<form id="confirm-form" class="space-y-5">
+  <div>
+    <label class="block text-sm font-medium text-slate-400 mb-2">Registration ID</label>
+    <div class="input-group">
+      <i data-lucide="hash" class="input-icon w-4 h-4"></i>
+      <input type="text" name="registration_id" id="registration_id" class="input-premium" required>
+    </div>
+  </div>
+  <div>
+    <label class="block text-sm font-medium text-slate-400 mb-2">6-Digit PIN</label>
+    <div class="input-group">
+      <i data-lucide="key-round" class="input-icon w-4 h-4"></i>
+      <input type="text" name="pin" class="input-premium" required maxlength="6" pattern="[0-9]{6}" placeholder="000000">
+    </div>
+  </div>
+  <button type="submit" id="confirm-btn" class="btn-premium btn-primary-glow">
+    <i data-lucide="check-circle" class="w-4 h-4"></i>
+    <span>Activate Account</span>
+  </button>
+</form>
+
+<p class="text-center text-sm text-slate-500 mt-6"><a href="/auth/login.html" class="link-premium">Back to login</a></p>
+{% endblock %}
+{% block scripts %}
+<script>
+  const regId = sessionStorage.getItem('registration_id');
+  if (regId) document.getElementById('registration_id').value = regId;
+
+  document.getElementById('confirm-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (!AuthUI.validateForm(form)) return;
+    const btn = document.getElementById('confirm-btn');
+    AuthUI.setButtonLoading(btn, true);
+    const fd = new FormData(form);
+    try {
+      await API.post('/auth/confirm-pin', {
+        registration_id: fd.get('registration_id'),
+        pin: fd.get('pin'),
+      });
+      AuthUI.showToast('Account activated! Redirecting…', 'success');
+      setTimeout(() => location.href = '/auth/login.html', 2000);
+    } catch (err) {
+      AuthUI.showToast(err.message, 'error');
+    } finally {
+      AuthUI.setButtonLoading(btn, false);
+    }
+  });
+</script>
+{% endblock %}

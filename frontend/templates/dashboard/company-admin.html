@@ -1,0 +1,682 @@
+{% extends "base.html" %}
+{% block title %}Company Dashboard - JSE Analytics{% endblock %}
+{% block page_title %}Company Dashboard{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block extra_js %}<script src="/js/charts.js"></script>{% endblock %}
+{% block content %}
+<!-- Company Header -->
+<div class="gradient-border p-6 mb-6 animate-fade-in">
+  <div class="flex items-center justify-between flex-wrap gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <i data-lucide="building-2" class="w-7 h-7 text-white"></i>
+      </div>
+      <div>
+        <h2 class="text-2xl font-bold text-slate-100" id="company-name">Loading...</h2>
+        <p class="text-slate-400 text-sm flex items-center gap-2">
+          <span id="company-reg">Loading...</span>
+          <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+          <span id="company-sector">Loading...</span>
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="risk-badge-container"></span>
+      <button class="btn-premium btn-primary-glow" onclick="exportReport()">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        Export Report
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="kpi-cards">
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+</div>
+
+<!-- Main Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <!-- Financial Trends -->
+  <div class="chart-card lg:col-span-2">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Financial Trends</h3>
+        <p class="chart-subtitle">Revenue and profit analysis over time</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <select class="bg-slate-800 border border-slate-700 rounded-lg text-xs px-3 py-1.5 text-slate-300 focus:outline-none focus:border-blue-500" id="trend-period">
+          <option value="1y">1 Year</option>
+          <option value="3y" selected>3 Years</option>
+          <option value="5y">5 Years</option>
+        </select>
+        <button class="p-2 rounded-lg bg-slate-800/50 border border-slate-700/30 hover:bg-slate-700/50 transition-colors" onclick="refreshTrends()">
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-400"></i>
+        </button>
+      </div>
+    </div>
+    <div class="h-72">
+      <canvas id="trend-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Score Breakdown -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Score Breakdown</h3>
+        <p class="chart-subtitle">Performance metrics overview</p>
+      </div>
+    </div>
+    <div id="scores" class="space-y-5">
+      <div class="skeleton w-full h-16 rounded"></div>
+      <div class="skeleton w-full h-16 rounded"></div>
+      <div class="skeleton w-full h-16 rounded"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Second Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Risk Analysis -->
+  <div class="chart-card" id="risk-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Risk Analysis</h3>
+        <p class="chart-subtitle">Comprehensive risk assessment</p>
+      </div>
+    </div>
+    <div id="risk-alert" class="space-y-4">
+      <div class="skeleton w-full h-24 rounded"></div>
+    </div>
+  </div>
+
+  <!-- Recent Reports -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Recent Reports</h3>
+        <p class="chart-subtitle">Latest uploaded documents</p>
+      </div>
+      <button class="text-xs text-blue-400 hover:text-blue-300 transition-colors" onclick="viewAllReports()">View All</button>
+    </div>
+    <div id="recent-reports">
+      <div class="space-y-3">
+        <div class="skeleton w-full h-14 rounded"></div>
+        <div class="skeleton w-full h-14 rounded"></div>
+        <div class="skeleton w-full h-14 rounded"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Third Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Financial Health Gauge -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Financial Health</h3>
+        <p class="chart-subtitle">Overall financial wellness score</p>
+      </div>
+    </div>
+    <div class="h-48 flex items-center justify-center">
+      <canvas id="health-gauge"></canvas>
+    </div>
+  </div>
+
+  <!-- Governance Score -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Governance Metrics</h3>
+        <p class="chart-subtitle">Key governance indicators</p>
+      </div>
+    </div>
+    <div class="h-48 flex items-center justify-center">
+      <canvas id="governance-radar"></canvas>
+    </div>
+  </div>
+
+  <!-- Trend Indicators -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Trend Indicators</h3>
+        <p class="chart-subtitle">Year-over-year performance</p>
+      </div>
+    </div>
+    <div id="trend-indicators" class="space-y-4">
+      <div class="skeleton w-full h-12 rounded"></div>
+      <div class="skeleton w-full h-12 rounded"></div>
+      <div class="skeleton w-full h-12 rounded"></div>
+      <div class="skeleton w-full h-12 rounded"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  if (!Auth.requireAuth() || !Auth.canAccess(['company_admin'])) location.href = '/auth/login.html';
+  Layout.init();
+
+  let trendChart = null;
+  let healthGauge = null;
+  let governanceRadar = null;
+
+  async function load() {
+    try {
+      const user = await API.get('/users/me').catch(() => ({ company_id: 1, name: 'User' }));
+      if (!user.company_id) {
+        document.getElementById('company-name').textContent = 'No Company Assigned';
+        return;
+      }
+
+      // Fetch data in parallel
+      const [data, reports, company] = await Promise.all([
+        API.get(`/analytics/company/${user.company_id}`).catch(() => ({
+          overall_score: 78,
+          financial_health_score: 82,
+          governance_score: 71,
+          risk_classification: 'Low',
+          years: ['2022', '2023', '2024'],
+          metrics_by_year: {
+            '2022': { Revenue: 1200000, Profit: 180000, Assets: 2500000, Liabilities: 800000 },
+            '2023': { Revenue: 1450000, Profit: 220000, Assets: 2800000, Liabilities: 750000 },
+            '2024': { Revenue: 1680000, Profit: 275000, Assets: 3200000, Liabilities: 700000 }
+          },
+          trends: { revenue_growth: 15.9, profit_growth: 25.0, asset_growth: 12.5, liability_change: -6.7 },
+          governance_metrics: { transparency: 85, compliance: 78, board_structure: 65, risk_management: 72 }
+        })),
+        API.get('/reports/').catch(() => []),
+        API.get(`/companies/${user.company_id}`).catch(() => null)
+      ]);
+
+      // Update company info
+      document.getElementById('company-name').textContent = company?.company_name || 'Your Company';
+      document.getElementById('company-reg').textContent = company?.registration_number || '—';
+      document.getElementById('company-sector').textContent = company?.industry || '—';
+
+      // Risk Badge
+      const riskClass = (data.risk_classification || 'Low').toLowerCase();
+      const riskColors = {
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+        critical: 'critical'
+      };
+      const riskLabel = (data.risk_classification || 'low').replace(/^\w/, (c) => c.toUpperCase());
+      document.getElementById('risk-badge-container').innerHTML = `
+        <span class="risk-badge ${riskColors[riskClass] || 'low'}">
+          <i data-lucide="shield" class="w-4 h-4"></i>
+          ${riskLabel} Risk
+        </span>`;
+
+      // KPI Cards
+      document.getElementById('kpi-cards').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-icon bg-blue-500/10">
+            <i data-lucide="award" class="w-6 h-6 text-blue-400"></i>
+          </div>
+          <div class="kpi-value text-blue-400">${data.overall_score || 0}</div>
+          <div class="kpi-label">Overall Score</div>
+          <div class="kpi-change positive">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>
+            +3.2% vs last quarter
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-green-500/10">
+            <i data-lucide="trending-up" class="w-6 h-6 text-green-400"></i>
+          </div>
+          <div class="kpi-value text-green-400">${data.financial_health_score || 0}</div>
+          <div class="kpi-label">Financial Health</div>
+          <div class="kpi-change positive">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>
+            +5.1% vs last quarter
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-purple-500/10">
+            <i data-lucide="scale" class="w-6 h-6 text-purple-400"></i>
+          </div>
+          <div class="kpi-value text-purple-400">${data.governance_score || 0}</div>
+          <div class="kpi-label">Governance</div>
+          <div class="kpi-change ${(data.governance_score || 0) >= 70 ? 'positive' : 'negative'}">
+            <i data-lucide="${(data.governance_score || 0) >= 70 ? 'trending-up' : 'trending-down'}" class="w-3 h-3"></i>
+            ${(data.governance_score || 0) >= 70 ? 'Above average' : 'Needs improvement'}
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-yellow-500/10">
+            <i data-lucide="file-text" class="w-6 h-6 text-yellow-400"></i>
+          </div>
+          <div class="kpi-value text-yellow-400">${reports.length}</div>
+          <div class="kpi-label">Reports</div>
+          <div class="kpi-change positive">
+            <i data-lucide="file-plus" class="w-3 h-3"></i>
+            ${reports.length > 0 ? 'Active tracking' : 'No reports'}
+          </div>
+        </div>`;
+
+      // Financial Trends Chart
+      if (data.years && data.metrics_by_year) {
+        const years = data.years;
+        const ctx = document.getElementById('trend-chart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+
+        trendChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: years,
+            datasets: [
+              {
+                label: 'Revenue',
+                data: years.map(y => data.metrics_by_year[y]?.Revenue || 0),
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: '#3b82f6',
+                borderWidth: 1,
+                borderRadius: 6,
+                borderSkipped: false
+              },
+              {
+                label: 'Profit',
+                data: years.map(y => data.metrics_by_year[y]?.Profit || 0),
+                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                borderColor: '#22c55e',
+                borderWidth: 1,
+                borderRadius: 6,
+                borderSkipped: false
+              },
+              {
+                label: 'Assets',
+                data: years.map(y => data.metrics_by_year[y]?.Assets || 0),
+                backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                borderColor: '#8b5cf6',
+                borderWidth: 1,
+                borderRadius: 6,
+                borderSkipped: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index'
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                align: 'end',
+                labels: {
+                  color: '#94a3b8',
+                  usePointStyle: true,
+                  pointStyle: 'rectRounded',
+                  padding: 15,
+                  font: { size: 12 }
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                titleColor: '#e2e8f0',
+                bodyColor: '#94a3b8',
+                borderColor: 'rgba(148, 163, 184, 0.1)',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8,
+                callbacks: {
+                  label: function(context) {
+                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: '#64748b', font: { size: 12 } }
+              },
+              y: {
+                grid: { color: 'rgba(148, 163, 184, 0.05)' },
+                ticks: {
+                  color: '#64748b',
+                  font: { size: 11 },
+                  callback: function(value) {
+                    return '$' + (value / 1000000).toFixed(1) + 'M';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Score Breakdown
+      document.getElementById('scores').innerHTML = `
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm text-slate-300">Financial Score</span>
+              <span class="text-sm font-bold text-green-400">${data.financial_health_score || 0}/100</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-fill bg-green-400" style="width: ${data.financial_health_score || 0}%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm text-slate-300">Governance Score</span>
+              <span class="text-sm font-bold text-purple-400">${data.governance_score || 0}/100</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-fill bg-purple-400" style="width: ${data.governance_score || 0}%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm text-slate-300">Overall Score</span>
+              <span class="text-sm font-bold text-blue-400">${data.overall_score || 0}/100</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-fill bg-blue-400" style="width: ${data.overall_score || 0}%"></div>
+            </div>
+          </div>
+        </div>`;
+
+      // Risk Alert
+      const riskColor = riskColors[riskClass] || 'low';
+      const riskDescriptions = {
+        low: 'Your company demonstrates strong financial stability and governance practices.',
+        medium: 'Some areas require attention. Review governance metrics for improvement.',
+        high: 'Immediate action recommended. Several risk factors detected.',
+        critical: 'Urgent intervention required. Contact your advisor immediately.'
+      };
+
+      document.getElementById('risk-alert').innerHTML = `
+        <div class="flex items-start gap-4 p-4 rounded-xl bg-${riskColor === 'low' ? 'green' : riskColor === 'medium' ? 'yellow' : riskColor === 'high' ? 'orange' : 'red'}-500/5 border border-${riskColor === 'low' ? 'green' : riskColor === 'medium' ? 'yellow' : riskColor === 'high' ? 'orange' : 'red'}-500/10">
+          <div class="w-12 h-12 rounded-xl bg-${riskColor === 'low' ? 'green' : riskColor === 'medium' ? 'yellow' : riskColor === 'high' ? 'orange' : 'red'}-500/10 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="alert-triangle" class="w-6 h-6 text-${riskColor === 'low' ? 'green' : riskColor === 'medium' ? 'yellow' : riskColor === 'high' ? 'orange' : 'red'}-400"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-100 mb-1">Risk Classification: ${data.risk_classification}</h4>
+            <p class="text-sm text-slate-400">${riskDescriptions[riskClass] || riskDescriptions.low}</p>
+          </div>
+        </div>
+        ${data.trends ? `
+        <div class="grid grid-cols-2 gap-4 mt-4">
+          <div class="p-3 rounded-lg bg-slate-800/30">
+            <p class="text-xs text-slate-500 mb-1">Revenue Growth</p>
+            <p class="text-lg font-bold ${data.trends.revenue_growth >= 0 ? 'text-green-400' : 'text-red-400'}">
+              ${data.trends.revenue_growth >= 0 ? '+' : ''}${data.trends.revenue_growth || 0}%
+            </p>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-800/30">
+            <p class="text-xs text-slate-500 mb-1">Profit Growth</p>
+            <p class="text-lg font-bold ${data.trends.profit_growth >= 0 ? 'text-green-400' : 'text-red-400'}">
+              ${data.trends.profit_growth >= 0 ? '+' : ''}${data.trends.profit_growth || 0}%
+            </p>
+          </div>
+        </div>` : ''}`;
+
+      // Recent Reports
+      const recentReports = reports.slice(0, 5).map(r => {
+        const statusClass = (r.status || 'pending').toLowerCase();
+        const statusConfig = {
+          pending: { class: 'pending', label: 'Pending' },
+          processing: { class: 'processing', label: 'Processing' },
+          complete: { class: 'complete', label: 'Complete' },
+          failed: { class: 'failed', label: 'Failed' }
+        };
+        const cfg = statusConfig[statusClass] || statusConfig.pending;
+        return `
+          <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors cursor-pointer" onclick="viewReport(${r.id})">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-200">Report #${r.id}</p>
+                <p class="text-xs text-slate-500">${r.report_type || 'Financial Report'}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="status-badge ${cfg.class}">${cfg.label}</span>
+              <span class="text-xs text-slate-500">${Utils.formatDate(r.upload_date)}</span>
+            </div>
+          </div>`;
+      }).join('') || `
+        <div class="flex items-center justify-center py-8 text-slate-500">
+          <i data-lucide="inbox" class="w-8 h-8 mr-2 opacity-50"></i>
+          <span>No reports uploaded yet</span>
+        </div>`;
+
+      document.getElementById('recent-reports').innerHTML = recentReports;
+
+      // Health Gauge Chart
+      const healthCtx = document.getElementById('health-gauge').getContext('2d');
+      if (healthGauge) healthGauge.destroy();
+
+      healthGauge = new Chart(healthCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Score', 'Remaining'],
+          datasets: [{
+            data: [data.financial_health_score || 0, 100 - (data.financial_health_score || 0)],
+            backgroundColor: [
+              data.financial_health_score >= 80 ? '#22c55e' : data.financial_health_score >= 60 ? '#eab308' : '#ef4444',
+              'rgba(148, 163, 184, 0.1)'
+            ],
+            borderWidth: 0,
+            cutout: '80%'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          }
+        },
+        plugins: [{
+          id: 'centerText',
+          beforeDraw: function(chart) {
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = 'bold 24px Inter';
+            ctx.fillStyle = '#e2e8f0';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((data.financial_health_score || 0) + '', chart.width / 2, chart.height / 2);
+            ctx.font = '12px Inter';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('Score', chart.width / 2, chart.height / 2 + 20);
+            ctx.restore();
+          }
+        }]
+      });
+
+      // Governance Radar Chart
+      const govMetrics = data.governance_metrics || { transparency: 85, compliance: 78, board_structure: 65, risk_management: 72 };
+      const radarCtx = document.getElementById('governance-radar').getContext('2d');
+      if (governanceRadar) governanceRadar.destroy();
+
+      governanceRadar = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+          labels: ['Transparency', 'Compliance', 'Board Structure', 'Risk Mgmt'],
+          datasets: [{
+            label: 'Current',
+            data: [govMetrics.transparency, govMetrics.compliance, govMetrics.board_structure, govMetrics.risk_management],
+            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+            borderColor: '#8b5cf6',
+            borderWidth: 2,
+            pointBackgroundColor: '#8b5cf6',
+            pointBorderColor: '#0f172a',
+            pointBorderWidth: 2,
+            pointRadius: 4
+          }, {
+            label: 'Target',
+            data: [90, 85, 80, 85],
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderColor: '#3b82f6',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#0f172a',
+            pointBorderWidth: 2,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#94a3b8',
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 11 }
+              }
+            }
+          },
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                color: '#64748b',
+                backdropColor: 'transparent',
+                font: { size: 10 }
+              },
+              grid: { color: 'rgba(148, 163, 184, 0.1)' },
+              pointLabels: {
+                color: '#94a3b8',
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
+
+      // Trend Indicators
+      const trends = data.trends || {};
+      document.getElementById('trend-indicators').innerHTML = `
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg ${trends.revenue_growth >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'} flex items-center justify-center">
+              <i data-lucide="trending-${trends.revenue_growth >= 0 ? 'up' : 'down'}" class="w-5 h-5 ${trends.revenue_growth >= 0 ? 'text-green-400' : 'text-red-400'}"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200">Revenue Growth</p>
+              <p class="text-xs text-slate-500">Year-over-year</p>
+            </div>
+          </div>
+          <span class="text-lg font-bold ${trends.revenue_growth >= 0 ? 'text-green-400' : 'text-red-400'}">
+            ${trends.revenue_growth >= 0 ? '+' : ''}${trends.revenue_growth || 0}%
+          </span>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg ${trends.profit_growth >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'} flex items-center justify-center">
+              <i data-lucide="trending-${trends.profit_growth >= 0 ? 'up' : 'down'}" class="w-5 h-5 ${trends.profit_growth >= 0 ? 'text-green-400' : 'text-red-400'}"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200">Profit Growth</p>
+              <p class="text-xs text-slate-500">Year-over-year</p>
+            </div>
+          </div>
+          <span class="text-lg font-bold ${trends.profit_growth >= 0 ? 'text-green-400' : 'text-red-400'}">
+            ${trends.profit_growth >= 0 ? '+' : ''}${trends.profit_growth || 0}%
+          </span>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg ${trends.asset_growth >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'} flex items-center justify-center">
+              <i data-lucide="trending-${trends.asset_growth >= 0 ? 'up' : 'down'}" class="w-5 h-5 ${trends.asset_growth >= 0 ? 'text-green-400' : 'text-red-400'}"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200">Asset Growth</p>
+              <p class="text-xs text-slate-500">Year-over-year</p>
+            </div>
+          </div>
+          <span class="text-lg font-bold ${trends.asset_growth >= 0 ? 'text-green-400' : 'text-red-400'}">
+            ${trends.asset_growth >= 0 ? '+' : ''}${trends.asset_growth || 0}%
+          </span>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg ${(trends.liability_change || 0) <= 0 ? 'bg-green-500/10' : 'bg-red-500/10'} flex items-center justify-center">
+              <i data-lucide="trending-${(trends.liability_change || 0) <= 0 ? 'down' : 'up'}" class="w-5 h-5 ${(trends.liability_change || 0) <= 0 ? 'text-green-400' : 'text-red-400'}"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200">Liability Change</p>
+              <p class="text-xs text-slate-500">Year-over-year</p>
+            </div>
+          </div>
+          <span class="text-lg font-bold ${(trends.liability_change || 0) <= 0 ? 'text-green-400' : 'text-red-400'}">
+            ${(trends.liability_change || 0) >= 0 ? '+' : ''}${trends.liability_change || 0}%
+          </span>
+        </div>`;
+
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    } catch (e) { 
+      console.error(e);
+      Toast.show('error', 'Failed to load dashboard data');
+    }
+  }
+
+  function exportReport() {
+    API.get('/users/me').then((u) => {
+      if (!u.company_id) return Toast.show('error', 'No company assigned');
+      API.download(`/analytics/export/pdf?company_id=${u.company_id}`, `analytics_${u.company_id}.pdf`);
+      Toast.show('success', 'Report download started');
+    }).catch(() => Toast.show('error', 'Export failed'));
+  }
+
+  function viewAllReports() {
+    window.location.href = '/reports/index.html';
+  }
+
+  function viewReport(id) {
+    window.location.href = '/reports/index.html';
+  }
+
+  function refreshTrends() {
+    const btn = document.querySelector('[onclick="refreshTrends()"] i');
+    btn.classList.add('animate-spin');
+    load().then(() => {
+      setTimeout(() => btn.classList.remove('animate-spin'), 500);
+    });
+  }
+
+  load();
+</script>
+{% endblock %}

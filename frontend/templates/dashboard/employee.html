@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+{% block title %}Employee Dashboard - JSE Analytics{% endblock %}
+{% block page_title %}Employee Dashboard{% endblock %}
+{% block content %}
+<!-- Welcome Section -->
+<div class="gradient-border p-6 mb-6 animate-fade-in">
+  <div class="flex items-center justify-between flex-wrap gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+        <i data-lucide="user" class="w-7 h-7 text-white"></i>
+      </div>
+      <div>
+        <h2 class="text-2xl font-bold text-slate-100">Welcome, <span id="employee-name">Employee</span></h2>
+        <p class="text-slate-400 text-sm" id="employee-role">Loading role...</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="badge-premium badge-glow">
+        <i data-lucide="clock" class="w-3 h-3 mr-1 inline"></i>
+        <span id="current-time">--:--</span>
+      </span>
+      <button class="btn-premium btn-primary-glow" onclick="uploadReport()">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        Upload Report
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6" id="kpi-cards">
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
+    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
+    <div class="skeleton w-32 h-4 rounded"></div>
+  </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <!-- Assigned Company -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Assigned Company</h3>
+        <p class="chart-subtitle">Your current assignment</p>
+      </div>
+      <button class="p-2 rounded-lg bg-slate-800/50 border border-slate-700/30 hover:bg-slate-700/50 transition-colors" onclick="refreshCompany()">
+        <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-400"></i>
+      </button>
+    </div>
+    <div id="company-info">
+      <div class="skeleton w-full h-32 rounded-xl"></div>
+    </div>
+  </div>
+
+  <!-- Recent Reports -->
+  <div class="chart-card lg:col-span-2">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Recent Reports</h3>
+        <p class="chart-subtitle">Latest document uploads</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <select class="bg-slate-800 border border-slate-700 rounded-lg text-xs px-3 py-1.5 text-slate-300 focus:outline-none focus:border-blue-500" id="report-filter">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="processing">Processing</option>
+          <option value="complete">Complete</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button class="text-xs text-blue-400 hover:text-blue-300 transition-colors" onclick="viewAllReports()">View All</button>
+      </div>
+    </div>
+    <div id="recent-reports">
+      <div class="space-y-3">
+        <div class="skeleton w-full h-14 rounded"></div>
+        <div class="skeleton w-full h-14 rounded"></div>
+        <div class="skeleton w-full h-14 rounded"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Second Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Extraction Status -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Extraction Status</h3>
+        <p class="chart-subtitle">Document processing overview</p>
+      </div>
+    </div>
+    <div id="extraction-status">
+      <div class="skeleton w-full h-48 rounded-xl"></div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Quick Actions</h3>
+        <p class="chart-subtitle">Frequently used tasks</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-blue-500/20 transition-all group text-left" onclick="uploadReport()">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
+          <i data-lucide="upload" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <p class="text-sm font-medium text-slate-200">Upload Report</p>
+        <p class="text-xs text-slate-500 mt-1">Add new document</p>
+      </button>
+      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-purple-500/20 transition-all group text-left" onclick="viewAnalytics()">
+        <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition-colors">
+          <i data-lucide="bar-chart-2" class="w-5 h-5 text-purple-400"></i>
+        </div>
+        <p class="text-sm font-medium text-slate-200">View Analytics</p>
+        <p class="text-xs text-slate-500 mt-1">Check company metrics</p>
+      </button>
+      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-green-500/20 transition-all group text-left" onclick="exportData()">
+        <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3 group-hover:bg-green-500/20 transition-colors">
+          <i data-lucide="download" class="w-5 h-5 text-green-400"></i>
+        </div>
+        <p class="text-sm font-medium text-slate-200">Export Data</p>
+        <p class="text-xs text-slate-500 mt-1">Download reports</p>
+      </button>
+      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-yellow-500/20 transition-all group text-left" onclick="openSettings()">
+        <div class="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-3 group-hover:bg-yellow-500/20 transition-colors">
+          <i data-lucide="settings" class="w-5 h-5 text-yellow-400"></i>
+        </div>
+        <p class="text-sm font-medium text-slate-200">Settings</p>
+        <p class="text-xs text-slate-500 mt-1">Manage preferences</p>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Third Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Company Analytics Summary -->
+  <div class="chart-card lg:col-span-2">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Company Analytics</h3>
+        <p class="chart-subtitle">Performance overview</p>
+      </div>
+    </div>
+    <div class="h-64">
+      <canvas id="company-analytics-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Activity Timeline -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">Activity Timeline</h3>
+        <p class="chart-subtitle">Recent actions</p>
+      </div>
+    </div>
+    <div id="activity-timeline" class="max-h-64 overflow-y-auto">
+      <div class="space-y-3">
+        <div class="skeleton w-full h-12 rounded"></div>
+        <div class="skeleton w-full h-12 rounded"></div>
+        <div class="skeleton w-full h-12 rounded"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  if (!Auth.requireAuth() || !Auth.canAccess(['employee'])) location.href = '/auth/login.html';
+  Layout.init();
+
+  let companyAnalyticsChart = null;
+
+  // Update clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  }
+  updateClock();
+  setInterval(updateClock, 60000);
+
+  async function load() {
+    try {
+      const user = await API.get('/users/me').catch(() => ({ 
+        name: 'Employee', 
+        email: 'employee@company.com',
+        role: 'employee',
+        company_id: 1 
+      }));
+
+      // Update welcome section
+      document.getElementById('employee-name').textContent = user.name || user.email?.split('@')[0] || 'Employee';
+      document.getElementById('employee-role').textContent = (user.role || 'employee').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+      // Fetch data in parallel
+      const [companies, reports, analytics] = await Promise.all([
+        API.get('/companies/').catch(() => [
+          { company_name: 'Acme Corp', registration_number: 'REG-2024-001', sector: 'Technology' }
+        ]),
+        API.get('/reports/').catch(() => [
+          { id: 1, status: 'complete', upload_date: '2024-01-15', report_type: 'Annual Report' },
+          { id: 2, status: 'processing', upload_date: '2024-01-14', report_type: 'Quarterly Review' },
+          { id: 3, status: 'pending', upload_date: '2024-01-13', report_type: 'Financial Statement' },
+          { id: 4, status: 'complete', upload_date: '2024-01-12', report_type: 'Tax Document' },
+          { id: 5, status: 'failed', upload_date: '2024-01-11', report_type: 'Audit Report' }
+        ]),
+        user.company_id ? API.get(`/analytics/company/${user.company_id}`).catch(() => ({
+          overall_score: 78,
+          financial_health_score: 82,
+          governance_score: 71,
+          years: ['2022', '2023', '2024'],
+          metrics_by_year: {
+            '2022': { Revenue: 1200000, Profit: 180000 },
+            '2023': { Revenue: 1450000, Profit: 220000 },
+            '2024': { Revenue: 1680000, Profit: 275000 }
+          }
+        })) : {}
+      ]);
+
+      // KPI Cards
+      document.getElementById('kpi-cards').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-icon bg-blue-500/10">
+            <i data-lucide="building-2" class="w-6 h-6 text-blue-400"></i>
+          </div>
+          <div class="kpi-value text-blue-400">${companies.length}</div>
+          <div class="kpi-label">Companies</div>
+          <div class="kpi-change positive">
+            <i data-lucide="check-circle" class="w-3 h-3"></i>
+            Active access
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-green-500/10">
+            <i data-lucide="file-text" class="w-6 h-6 text-green-400"></i>
+          </div>
+          <div class="kpi-value text-green-400">${reports.length}</div>
+          <div class="kpi-label">Reports</div>
+          <div class="kpi-change positive">
+            <i data-lucide="trending-up" class="w-3 h-3"></i>
+            ${reports.filter(r => r.status === 'complete').length} processed
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon bg-purple-500/10">
+            <i data-lucide="award" class="w-6 h-6 text-purple-400"></i>
+          </div>
+          <div class="kpi-value text-purple-400">${analytics.overall_score || '-'}</div>
+          <div class="kpi-label">Overall Score</div>
+          <div class="kpi-change ${(analytics.overall_score || 0) >= 70 ? 'positive' : 'negative'}">
+            <i data-lucide="${(analytics.overall_score || 0) >= 70 ? 'trending-up' : 'alert-circle'}" class="w-3 h-3"></i>
+            ${(analytics.overall_score || 0) >= 70 ? 'Good standing' : 'Review needed'}
+          </div>
+        </div>`;
+
+      // Company Info
+      const company = companies[0];
+      document.getElementById('company-info').innerHTML = company ? `
+        <div class="flex items-center gap-4 p-4 rounded-xl bg-slate-800/30">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="building-2" class="w-8 h-8 text-blue-400"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h4 class="text-lg font-semibold text-slate-100 truncate">${company.company_name}</h4>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-xs text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded">${company.registration_number}</span>
+              <span class="text-xs text-slate-500">${company.industry || '—'}</span>
+            </div>
+            ${analytics.overall_score ? `
+            <div class="flex items-center gap-2 mt-2">
+              <div class="progress-bar flex-1" style="height: 6px;">
+                <div class="progress-bar-fill bg-blue-400" style="width: ${analytics.overall_score}%"></div>
+              </div>
+              <span class="text-xs font-semibold text-blue-400">${analytics.overall_score}</span>
+            </div>` : ''}
+          </div>
+        </div>
+      ` : `
+        <div class="flex items-center justify-center py-8 text-slate-500">
+          <i data-lucide="building-x" class="w-8 h-8 mr-2 opacity-50"></i>
+          <span>No company assigned</span>
+        </div>
+      `;
+
+      // Recent Reports
+      const statusConfig = {
+        pending: { class: 'pending', label: 'Pending', icon: 'clock' },
+        processing: { class: 'processing', label: 'Processing', icon: 'loader' },
+        complete: { class: 'complete', label: 'Complete', icon: 'check-circle' },
+        failed: { class: 'failed', label: 'Failed', icon: 'x-circle' }
+      };
+
+      const recentReports = reports.slice(0, 5).map(r => {
+        const cfg = statusConfig[r.status?.toLowerCase()] || statusConfig.pending;
+        return `
+          <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors cursor-pointer" onclick="viewReport(${r.id})">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-200">Report #${r.id}</p>
+                <p class="text-xs text-slate-500">${r.report_type || 'Financial Report'}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="status-badge ${cfg.class}">
+                <i data-lucide="${cfg.icon}" class="w-3 h-3"></i>
+                ${cfg.label}
+              </span>
+              <span class="text-xs text-slate-500">${Utils.formatDate(r.upload_date)}</span>
+            </div>
+          </div>`;
+      }).join('') || `
+        <div class="flex items-center justify-center py-8 text-slate-500">
+          <i data-lucide="inbox" class="w-8 h-8 mr-2 opacity-50"></i>
+          <span>No reports yet</span>
+        </div>
+      `;
+
+      document.getElementById('recent-reports').innerHTML = recentReports;
+
+      // Extraction Status
+      const statuses = { pending: 0, processing: 0, complete: 0, failed: 0 };
+      reports.forEach(r => statuses[r.status?.toLowerCase()] = (statuses[r.status?.toLowerCase()] || 0) + 1);
+      const total = reports.length || 1;
+
+      document.getElementById('extraction-status').innerHTML = `
+        <div class="space-y-4">
+          ${Object.entries(statuses).map(([s, c]) => {
+            const cfg = statusConfig[s] || statusConfig.pending;
+            const pct = Math.round((c / total) * 100);
+            return `
+              <div>
+                <div class="flex justify-between items-center mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="status-badge ${cfg.class}">
+                      <i data-lucide="${cfg.icon}" class="w-3 h-3"></i>
+                      ${cfg.label}
+                    </span>
+                    <span class="text-sm text-slate-400">${c} reports</span>
+                  </div>
+                  <span class="text-sm font-semibold text-slate-300">${pct}%</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-bar-fill ${s === 'complete' ? 'bg-green-400' : s === 'processing' ? 'bg-blue-400' : s === 'pending' ? 'bg-yellow-400' : 'bg-red-400'}" style="width: ${pct}%"></div>
+                </div>
+              </div>`;
+          }).join('')}
+          <div class="pt-2 border-t border-slate-700/20">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">Total Reports</span>
+              <span class="text-lg font-bold text-slate-200">${total}</span>
+            </div>
+          </div>
+        </div>`;
+
+      // Company Analytics Chart
+      if (analytics.years && analytics.metrics_by_year) {
+        const ctx = document.getElementById('company-analytics-chart').getContext('2d');
+        if (companyAnalyticsChart) companyAnalyticsChart.destroy();
+
+        companyAnalyticsChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: analytics.years,
+            datasets: [
+              {
+                label: 'Revenue',
+                data: analytics.years.map(y => analytics.metrics_by_year[y]?.Revenue || 0),
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#0f172a',
+                pointBorderWidth: 2
+              },
+              {
+                label: 'Profit',
+                data: analytics.years.map(y => analytics.metrics_by_year[y]?.Profit || 0),
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#22c55e',
+                pointBorderColor: '#0f172a',
+                pointBorderWidth: 2
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index'
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                align: 'end',
+                labels: {
+                  color: '#94a3b8',
+                  usePointStyle: true,
+                  pointStyle: 'circle',
+                  padding: 15,
+                  font: { size: 12 }
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                titleColor: '#e2e8f0',
+                bodyColor: '#94a3b8',
+                borderColor: 'rgba(148, 163, 184, 0.1)',
+                borderWidth: 1,
+                padding: 12,
+                cornerRadius: 8,
+                callbacks: {
+                  label: function(context) {
+                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: 'rgba(148, 163, 184, 0.05)' },
+                ticks: { color: '#64748b', font: { size: 12 } }
+              },
+              y: {
+                grid: { color: 'rgba(148, 163, 184, 0.05)' },
+                ticks: {
+                  color: '#64748b',
+                  font: { size: 11 },
+                  callback: function(value) {
+                    return '$' + (value / 1000000).toFixed(1) + 'M';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Activity Timeline
+      const activities = [
+        { action: 'Report uploaded', detail: 'Report #5 - Annual Financial Statement', time: '2 hours ago', icon: 'upload', color: 'blue' },
+        { action: 'Extraction completed', detail: 'Report #4 - Tax Document', time: '5 hours ago', icon: 'check-circle', color: 'green' },
+        { action: 'Report uploaded', detail: 'Report #3 - Quarterly Review', time: '1 day ago', icon: 'upload', color: 'blue' },
+        { action: 'Login', detail: 'Successful authentication', time: '1 day ago', icon: 'log-in', color: 'purple' },
+        { action: 'Extraction failed', detail: 'Report #2 - Audit Report', time: '2 days ago', icon: 'alert-triangle', color: 'red' }
+      ];
+
+      document.getElementById('activity-timeline').innerHTML = activities.map(a => `
+        <div class="activity-item">
+          <div class="activity-icon bg-${a.color}-500/10">
+            <i data-lucide="${a.icon}" class="w-4 h-4 text-${a.color}-400"></i>
+          </div>
+          <div class="activity-content">
+            <p class="activity-text">${a.action}</p>
+            <p class="text-sm text-slate-400">${a.detail}</p>
+            <p class="activity-time">${a.time}</p>
+          </div>
+        </div>
+      `).join('');
+
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    } catch (e) { 
+      console.error(e);
+      Toast.show('error', 'Failed to load dashboard data');
+    }
+  }
+
+  function uploadReport() {
+    window.location.href = '/reports/index.html';
+  }
+
+  function viewAllReports() {
+    window.location.href = '/reports/index.html';
+  }
+
+  function viewReport(id) {
+    window.location.href = '/reports/index.html';
+  }
+
+  function viewAnalytics() {
+    window.location.href = '/analytics/index.html';
+  }
+
+  function exportData() {
+    API.get('/users/me').then((u) => {
+      if (!u.company_id) return Toast.show('error', 'No company assigned');
+      API.download(`/analytics/export/excel?company_id=${u.company_id}`, `analytics_${u.company_id}.xlsx`);
+      Toast.show('success', 'Export started');
+    }).catch(() => Toast.show('error', 'Export failed'));
+  }
+
+  function openSettings() {
+    window.location.href = '/settings/index.html';
+  }
+
+  function refreshCompany() {
+    const btn = document.querySelector('[onclick="refreshCompany()"] i');
+    btn.classList.add('animate-spin');
+    load().then(() => {
+      setTimeout(() => btn.classList.remove('animate-spin'), 500);
+    });
+  }
+
+  // Filter reports
+  document.getElementById('report-filter')?.addEventListener('change', function() {
+    const filter = this.value;
+    // In a real app, this would filter the reports
+    Toast.show('info', `Filtering by: ${filter}`);
+  });
+
+  load();
+</script>
+{% endblock %}

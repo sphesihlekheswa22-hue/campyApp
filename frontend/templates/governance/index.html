@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Governance - JSE Analytics{% endblock %}
+{% block page_title %}Governance{% endblock %}
+{% block content %}
+<!-- Stats -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="card-premium p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+        <i data-lucide="shield" class="w-4 h-4 text-purple-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Narratives</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-total">-</p>
+  </div>
+  <div class="card-premium p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+        <i data-lucide="layers" class="w-4 h-4 text-blue-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Categories</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-categories">-</p>
+  </div>
+  <div class="card-premium p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+        <i data-lucide="gauge" class="w-4 h-4 text-emerald-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Avg Confidence</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-confidence">-</p>
+  </div>
+  <div class="card-premium p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">High Confidence</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-high">-</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="flex flex-col sm:flex-row gap-3 mb-6">
+  <div class="relative w-full sm:w-80">
+    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    <input type="search" id="search" class="search-premium pl-10" placeholder="Search narratives…">
+  </div>
+  <div class="relative w-full sm:w-56">
+    <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    <select id="category-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+      <option value="">All categories</option>
+    </select>
+    <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+  </div>
+  <button class="btn-premium btn-secondary-glass p-2.5 sm:ml-auto" onclick="loadNarratives()" title="Refresh">
+    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+  </button>
+</div>
+
+<!-- Narratives Grid -->
+<div id="narratives" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <div class="card-premium p-6 min-h-[180px]"><div class="h-4 w-32 bg-slate-700/50 rounded shimmer mb-4"></div><div class="h-3 w-full bg-slate-700/50 rounded shimmer mb-2"></div><div class="h-3 w-3/4 bg-slate-700/50 rounded shimmer"></div></div>
+  <div class="card-premium p-6 min-h-[180px]"><div class="h-4 w-28 bg-slate-700/50 rounded shimmer mb-4"></div><div class="h-3 w-full bg-slate-700/50 rounded shimmer mb-2"></div><div class="h-3 w-2/3 bg-slate-700/50 rounded shimmer"></div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function initGovernancePage() {
+    if (!Auth.requireAuth()) return;
+    Layout.init();
+    Layout.setBreadcrumbs([{ label: 'Governance' }]);
+
+    let allNarratives = [];
+
+    const categoryIcons = {
+      'Board Structure': 'users',
+      'Risk Management': 'shield-alert',
+      'Compliance': 'scale',
+      'Sustainability': 'leaf',
+    };
+
+    function updateStats(items) {
+      document.getElementById('stat-total').textContent = items.length;
+      const cats = new Set(items.map(n => n.category));
+      document.getElementById('stat-categories').textContent = cats.size;
+      if (items.length) {
+        const avg = items.reduce((s, n) => s + (n.confidence_score || 0), 0) / items.length;
+        document.getElementById('stat-confidence').textContent = Math.round(avg * 100) + '%';
+        document.getElementById('stat-high').textContent = items.filter(n => (n.confidence_score || 0) >= 0.85).length;
+      } else {
+        document.getElementById('stat-confidence').textContent = '-';
+        document.getElementById('stat-high').textContent = '0';
+      }
+    }
+
+    function renderNarratives(items) {
+      const container = document.getElementById('narratives');
+      if (!items.length) {
+        container.innerHTML = `<div class="lg:col-span-2 card-premium p-12 flex flex-col items-center text-center">
+          <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
+            <i data-lucide="shield-off" class="w-8 h-8 text-slate-600"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-400 mb-1">No governance narratives</h3>
+          <p class="text-sm text-slate-600">Upload and extract annual reports to populate governance data</p>
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = items.map(n => {
+        const pct = Math.round((n.confidence_score || 0) * 100);
+        const icon = categoryIcons[n.category] || 'file-text';
+        const barColor = pct >= 85 ? 'from-emerald-500 to-teal-400' : pct >= 70 ? 'from-blue-500 to-cyan-400' : 'from-amber-500 to-orange-400';
+        return `<div class="card-premium p-6 group hover:border-blue-500/20 transition-colors">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="${icon}" class="w-5 h-5 text-purple-400"></i>
+              </div>
+              <div>
+                <h4 class="font-semibold text-slate-100">${n.category}</h4>
+                <p class="text-xs text-slate-500 mt-0.5">Report #${n.report_id}</p>
+              </div>
+            </div>
+            <span class="badge-premium badge-glow text-xs">${pct}% confidence</span>
+          </div>
+          <p class="text-sm text-slate-400 leading-relaxed mb-4">${n.content.substring(0, 420)}${n.content.length > 420 ? '…' : ''}</p>
+          <div class="h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r ${barColor} rounded-full" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function filterAndRender() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const category = document.getElementById('category-filter').value;
+      let filtered = allNarratives;
+      if (category) filtered = filtered.filter(n => n.category === category);
+      if (search) {
+        filtered = filtered.filter(n =>
+          n.content.toLowerCase().includes(search) ||
+          n.category.toLowerCase().includes(search)
+        );
+      }
+      updateStats(filtered);
+      renderNarratives(filtered);
+      Layout.refreshIcons();
+    }
+
+    async function loadNarratives() {
+      try {
+        allNarratives = await API.get('/governance/');
+        filterAndRender();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to load governance data', 'error');
+        document.getElementById('narratives').innerHTML = `<div class="lg:col-span-2 card-premium p-8 text-center text-sm text-slate-400">${err.message || 'Failed to load'}</div>`;
+      }
+    }
+
+    window.loadNarratives = loadNarratives;
+
+    async function loadCategories() {
+      try {
+        const cats = await API.get('/governance/categories');
+        document.getElementById('category-filter').innerHTML = '<option value="">All categories</option>' +
+          cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      } catch { /* optional */ }
+    }
+
+    document.getElementById('search').addEventListener('input', Utils.debounce(filterAndRender, 300));
+    document.getElementById('category-filter').addEventListener('change', filterAndRender);
+
+    loadCategories().then(loadNarratives);
+  })();
+</script>
+{% endblock %}

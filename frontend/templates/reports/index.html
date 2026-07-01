@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Reports - JSE Analytics{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block content %}
+<!-- Stats -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="card-premium p-5 relative overflow-hidden">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+        <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Total Reports</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-total">-</p>
+  </div>
+  <div class="card-premium p-5 relative overflow-hidden">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Complete</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-complete">-</p>
+  </div>
+  <div class="card-premium p-5 relative overflow-hidden">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+        <i data-lucide="loader" class="w-4 h-4 text-amber-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Processing</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-processing">-</p>
+  </div>
+  <div class="card-premium p-5 relative overflow-hidden">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+        <i data-lucide="alert-circle" class="w-4 h-4 text-red-400"></i>
+      </div>
+      <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Failed</span>
+    </div>
+    <p class="text-3xl font-bold text-slate-100" id="stat-failed">-</p>
+  </div>
+</div>
+
+<!-- Upload -->
+<div id="upload-section" class="card-premium p-6 mb-6 hidden">
+  <div class="flex items-center gap-3 mb-5">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
+      <i data-lucide="upload" class="w-5 h-5 text-blue-400"></i>
+    </div>
+    <div>
+      <h3 class="font-semibold text-slate-100">Upload Annual Report</h3>
+      <p class="text-xs text-slate-500">PDF files only — extraction runs automatically</p>
+    </div>
+  </div>
+  <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+    <div class="relative w-full lg:w-64">
+      <i data-lucide="building-2" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+      <select id="company-select" class="search-premium pl-10 appearance-none cursor-pointer w-full"></select>
+      <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    </div>
+    <div class="relative w-full lg:flex-1">
+      <input type="file" id="file-input" accept=".pdf" class="search-premium w-full file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-blue-500/20 file:text-blue-300 file:text-sm">
+    </div>
+    <button id="upload-btn" class="btn-premium btn-primary-glow whitespace-nowrap">
+      <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+      <span>Upload PDF</span>
+    </button>
+  </div>
+  <div class="mt-4 hidden" id="progress-wrap">
+    <div class="progress-bar">
+      <div class="progress-bar-fill bg-blue-500" id="progress-fill" style="width:0%"></div>
+    </div>
+    <p class="text-sm text-slate-400 mt-2" id="progress-text">Uploading… 0%</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="flex flex-col sm:flex-row gap-3 mb-6">
+  <div class="relative w-full sm:w-72">
+    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    <input type="search" id="search" class="search-premium pl-10" placeholder="Search by company or filename…">
+  </div>
+  <div class="relative w-full sm:w-48">
+    <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    <select id="status-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="processing">Processing</option>
+      <option value="complete">Complete</option>
+      <option value="failed">Failed</option>
+    </select>
+  </div>
+  <button class="btn-premium btn-secondary-glass p-2.5 sm:ml-auto" onclick="load()" title="Refresh">
+    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+  </button>
+</div>
+
+<!-- Table -->
+<div class="card-premium overflow-hidden">
+  <div class="flex items-center justify-between p-5 border-b border-slate-700/30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+        <i data-lucide="files" class="w-4 h-4 text-violet-400"></i>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-100">Report Library</h3>
+        <p class="text-xs text-slate-500" id="table-subtitle">Loading…</p>
+      </div>
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full" id="reports-table">
+      <thead>
+        <tr class="border-b border-slate-700/30 bg-slate-800/30">
+          <th class="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Report</th>
+          <th class="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Company</th>
+          <th class="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+          <th class="text-left py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Uploaded</th>
+          <th class="text-right py-3.5 px-5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-700/20" id="reports-body">
+        <tr><td colspan="5" class="py-8 px-5"><div class="h-10 bg-slate-800/50 rounded shimmer"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function initReportsPage() {
+    if (!Auth.requireAuth()) return;
+    Layout.init();
+    Layout.setBreadcrumbs([{ label: 'Reports' }]);
+
+    if (Auth.canAccess(['platform_owner', 'company_admin'])) {
+      document.getElementById('upload-section').classList.remove('hidden');
+    }
+
+    let allReports = [];
+    let companyMap = {};
+
+    async function load() {
+      const tbody = document.getElementById('reports-body');
+      try {
+        const [reports, companies] = await Promise.all([
+          API.get('/reports/'),
+          API.get('/companies/'),
+        ]);
+        allReports = reports;
+        companyMap = Object.fromEntries(companies.map(c => [c.id, c.company_name]));
+
+        if (Auth.canAccess(['platform_owner', 'company_admin'])) {
+          document.getElementById('company-select').innerHTML = companies.map(c =>
+            `<option value="${c.id}">${c.company_name}</option>`
+          ).join('');
+        }
+
+        document.getElementById('stat-total').textContent = reports.length;
+        document.getElementById('stat-complete').textContent = reports.filter(r => r.status === 'complete').length;
+        document.getElementById('stat-processing').textContent = reports.filter(r => ['pending', 'processing'].includes(r.status)).length;
+        document.getElementById('stat-failed').textContent = reports.filter(r => r.status === 'failed').length;
+
+        renderTable();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to load reports', 'error');
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-sm text-slate-400">${err.message || 'Failed to load'}</td></tr>`;
+      }
+      Layout.refreshIcons();
+    }
+
+    function renderTable() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const status = document.getElementById('status-filter').value;
+      const tbody = document.getElementById('reports-body');
+
+      let filtered = allReports;
+      if (status) filtered = filtered.filter(r => r.status === status);
+      if (search) {
+        filtered = filtered.filter(r => {
+          const name = companyMap[r.company_id] || '';
+          const file = (r.file_path || '').split('/').pop() || '';
+          return name.toLowerCase().includes(search) || file.toLowerCase().includes(search) || String(r.id).includes(search);
+        });
+      }
+
+      document.getElementById('table-subtitle').textContent = `${filtered.length} report${filtered.length !== 1 ? 's' : ''}`;
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center">
+              <i data-lucide="file-x" class="w-7 h-7 text-slate-600"></i>
+            </div>
+            <p class="text-sm text-slate-400">No reports found</p>
+          </div>
+        </td></tr>`;
+        return;
+      }
+
+      const canManage = Auth.canAccess(['platform_owner', 'company_admin']);
+      tbody.innerHTML = filtered.map(r => {
+        const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
+        return `<tr class="hover:bg-slate-800/30 transition-colors group">
+          <td class="py-4 px-5">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-200">${filename}</p>
+                <p class="text-xs text-slate-500">ID #${r.id}</p>
+              </div>
+            </div>
+          </td>
+          <td class="py-4 px-5 text-sm text-slate-400">${companyMap[r.company_id] || r.company_id}</td>
+          <td class="py-4 px-5">${Utils.statusBadge(r.status)}</td>
+          <td class="py-4 px-5 text-sm text-slate-500">${Utils.formatDate(r.upload_date)}</td>
+          <td class="py-4 px-5 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <button class="btn-premium btn-secondary-glass px-3 py-1.5 text-xs" onclick="downloadReport(${r.id})">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Download</span>
+              </button>
+              ${canManage ? `<button class="btn-premium btn-secondary-glass px-3 py-1.5 text-xs" onclick="retryExtraction(${r.id})">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Retry</span>
+              </button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    window.load = load;
+
+    async function retryExtraction(id) {
+      try {
+        await API.post(`/extractions/retry/${id}`);
+        Layout.showToast('Extraction queued', 'success');
+        load();
+      } catch (err) {
+        Layout.showToast(err.message || 'Retry failed', 'error');
+      }
+    }
+
+    async function downloadReport(id) {
+      try {
+        await API.download(`/reports/${id}/download`, `report_${id}.pdf`);
+      } catch (err) {
+        Layout.showToast(err.message || 'Download failed', 'error');
+      }
+    }
+
+    window.retryExtraction = retryExtraction;
+    window.downloadReport = downloadReport;
+
+    document.getElementById('search').addEventListener('input', Utils.debounce(renderTable, 300));
+    document.getElementById('status-filter').addEventListener('change', renderTable);
+
+    document.getElementById('upload-btn').addEventListener('click', async () => {
+      const file = document.getElementById('file-input').files[0];
+      const companyId = document.getElementById('company-select').value;
+      if (!file || !companyId) {
+        Layout.showToast('Select a company and PDF file', 'warning');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('file', file);
+      document.getElementById('progress-wrap').classList.remove('hidden');
+      const btn = document.getElementById('upload-btn');
+      btn.disabled = true;
+
+      try {
+        await API.uploadWithProgress(`/reports/upload?company_id=${companyId}`, fd, (pct) => {
+          document.getElementById('progress-fill').style.width = pct + '%';
+          document.getElementById('progress-text').textContent = `Uploading… ${pct}%`;
+        });
+        document.getElementById('file-input').value = '';
+        document.getElementById('progress-wrap').classList.add('hidden');
+        Layout.showToast('Report uploaded — extraction started', 'success');
+        load();
+      } catch (err) {
+        Layout.showToast(err.message || 'Upload failed', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    load();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "auth_base.html" %}
+{% block title %}Redirecting…{% endblock %}
+{% block content %}
+<p class="text-center text-slate-400 text-sm">Redirecting…</p>
+{% endblock %}
+{% block scripts %}
+<script>
+  if (sessionStorage.getItem('access_token')) {
+    Auth.redirectByRole();
+  } else {
+    location.href = '/auth/login.html';
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Company Detail - JSE Analytics{% endblock %}
+{% block page_title %}Company Detail{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="flex items-center gap-2 mb-6 text-sm">
+  <a href="/companies/index.html" class="breadcrumb-item hover:text-blue-400 transition-colors">Companies</a>
+  <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+  <span class="text-slate-300 font-medium" id="breadcrumb-company">Loading...</span>
+</div>
+
+<div class="space-y-6">
+  <!-- Company Header Card -->
+  <div class="card-premium p-6 relative overflow-hidden group" id="company-detail">
+    <!-- Shimmer loading state -->
+    <div class="shimmer-state">
+      <div class="h-8 w-64 bg-slate-700/50 rounded-lg shimmer mb-3"></div>
+      <div class="h-4 w-48 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+  </div>
+
+  <!-- Analytics KPI Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="analytics-summary">
+    <!-- Loading shimmer cards -->
+    <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px]">
+      <div class="h-4 w-20 bg-slate-700/50 rounded shimmer mb-3"></div>
+      <div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+    <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px]">
+      <div class="h-4 w-20 bg-slate-700/50 rounded shimmer mb-3"></div>
+      <div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+    <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px]">
+      <div class="h-4 w-20 bg-slate-700/50 rounded shimmer mb-3"></div>
+      <div class="h-8 w-24 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+  </div>
+
+  <!-- Reports Section -->
+  <div class="card-premium overflow-hidden">
+    <div class="flex items-center justify-between p-6 border-b border-slate-700/30">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
+          <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100">Reports</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Company documentation & analysis</p>
+        </div>
+      </div>
+      <span class="badge-premium badge-glow" id="reports-count">0 reports</span>
+    </div>
+    <div id="reports-list" class="divide-y divide-slate-700/30">
+      <!-- Loading state -->
+      <div class="p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="h-4 w-32 bg-slate-700/50 rounded shimmer"></div>
+          <div class="h-4 w-20 bg-slate-700/50 rounded shimmer"></div>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="h-4 w-40 bg-slate-700/50 rounded shimmer"></div>
+          <div class="h-4 w-20 bg-slate-700/50 rounded shimmer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  if (!Auth.requireAuth()) return;
+  Layout.init();
+  Layout.setBreadcrumbs([{ label: 'Companies' }]);
+  const id = Utils.getParam('id');
+  if (!id) {
+    location.href = '/companies/index.html';
+    return;
+  }
+
+  async function load() {
+    try {
+      const company = await API.get(`/companies/${id}`);
+
+      // Update breadcrumb
+      document.getElementById('breadcrumb-company').textContent = company.company_name;
+
+      // Company Detail Card with premium styling
+      document.getElementById('company-detail').innerHTML = `
+        <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-start justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-blue-500/20 flex-shrink-0">
+                ${company.company_name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h2 class="text-2xl font-bold text-slate-100">${company.company_name}</h2>
+                <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <span class="flex items-center gap-1.5 text-sm text-slate-400">
+                    <i data-lucide="hash" class="w-3.5 h-3.5"></i>
+                    ${company.registration_number}
+                  </span>
+                  <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                  <span class="flex items-center gap-1.5 text-sm text-slate-400">
+                    <i data-lucide="building-2" class="w-3.5 h-3.5"></i>
+                    ${company.industry || 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              ${company.website ? `
+                <a href="${company.website.startsWith('http') ? company.website : 'https://' + company.website}" 
+                   target="_blank" 
+                   class="btn-premium btn-secondary-glass text-sm px-4 py-2">
+                  <i data-lucide="external-link" class="w-4 h-4"></i>
+                  <span>Website</span>
+                </a>
+              ` : ''}
+              <span class="badge-premium ${company.subscription_status === 'active' ? 'badge-glow' : 'bg-slate-800 text-slate-400 border border-slate-700/50'}">
+                ${company.subscription_status}
+              </span>
+            </div>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-700/30 flex items-center gap-6 flex-wrap text-sm">
+            <span class="flex items-center gap-2 text-slate-500">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+              Created ${Utils.formatDate(company.created_at)}
+            </span>
+          </div>
+        </div>
+      `;
+
+      Layout.refreshIcons();
+    } catch (err) {
+      document.getElementById('company-detail').innerHTML = `
+        <div class="flex flex-col items-center justify-center py-8 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="alert-circle" class="w-8 h-8 text-red-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-200">Failed to load company</h3>
+          <p class="text-sm text-slate-500 mt-1">${err.message || 'Something went wrong'}</p>
+        </div>
+      `;
+      Layout.refreshIcons();
+      return;
+    }
+
+    // Analytics Summary with premium KPI cards
+    try {
+      const analytics = await API.get(`/analytics/company/${id}`);
+      document.getElementById('analytics-summary').innerHTML = `
+        <!-- Overall Score -->
+        <div class="card-premium p-6 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <i data-lucide="activity" class="w-4 h-4 text-blue-400"></i>
+              </div>
+              <span class="text-slate-400 text-sm font-medium">Overall Score</span>
+            </div>
+            <div class="flex items-end gap-2">
+              <span class="text-4xl font-bold text-slate-100">${analytics.overall_score || 0}</span>
+              <span class="text-sm text-slate-500 mb-1">/ 100</span>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-1000" style="width: ${(analytics.overall_score || 0)}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial Health -->
+        <div class="card-premium p-6 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+              <span class="text-slate-400 text-sm font-medium">Financial Health</span>
+            </div>
+            <div class="flex items-end gap-2">
+              <span class="text-4xl font-bold text-slate-100">${analytics.financial_health_score || 0}</span>
+              <span class="text-sm text-slate-500 mb-1">/ 100</span>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000" style="width: ${(analytics.financial_health_score || 0)}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk Classification -->
+        <div class="card-premium p-6 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+              </div>
+              <span class="text-slate-400 text-sm font-medium">Risk Level</span>
+            </div>
+            <div class="flex items-center gap-3">
+              ${Utils.riskBadge(analytics.risk_classification)}
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Based on latest financial analysis</p>
+          </div>
+        </div>
+      `;
+      Layout.refreshIcons();
+    } catch {
+      document.getElementById('analytics-summary').innerHTML = `
+        <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px] text-center">
+          <div class="w-10 h-10 rounded-xl bg-slate-700/30 flex items-center justify-center mb-3">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 text-slate-500"></i>
+          </div>
+          <p class="text-sm text-slate-500">Analytics not available</p>
+        </div>
+        <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px] text-center">
+          <div class="w-10 h-10 rounded-xl bg-slate-700/30 flex items-center justify-center mb-3">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 text-slate-500"></i>
+          </div>
+          <p class="text-sm text-slate-500">Analytics not available</p>
+        </div>
+        <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px] text-center">
+          <div class="w-10 h-10 rounded-xl bg-slate-700/30 flex items-center justify-center mb-3">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 text-slate-500"></i>
+          </div>
+          <p class="text-sm text-slate-500">Analytics not available</p>
+        </div>
+      `;
+      Layout.refreshIcons();
+    }
+
+    // Reports List with premium styling
+    try {
+      const reports = await API.get(`/reports/?company_id=${id}`);
+      const reportsCount = document.getElementById('reports-count');
+
+      if (reportsCount) {
+        reportsCount.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
+      }
+
+      if (reports.length === 0) {
+        document.getElementById('reports-list').innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
+              <i data-lucide="file-x" class="w-8 h-8 text-slate-600"></i>
+            </div>
+            <h4 class="text-sm font-medium text-slate-400">No reports yet</h4>
+            <p class="text-xs text-slate-600 mt-1">Reports will appear here once uploaded</p>
+          </div>
+        `;
+      } else {
+        document.getElementById('reports-list').innerHTML = reports.map((r, index) => {
+          const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
+          return `<div class="flex items-center justify-between py-4 px-6 hover:bg-slate-800/30 transition-colors group">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center border border-blue-500/10 group-hover:border-blue-500/30 transition-colors">
+                <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-200 group-hover:text-blue-400 transition-colors">${filename}</p>
+                <p class="text-xs text-slate-500 mt-0.5">Report #${r.id}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              ${Utils.statusBadge(r.status)}
+              <span class="text-xs text-slate-500 flex items-center gap-1.5">
+                <i data-lucide="calendar" class="w-3 h-3"></i>
+                ${Utils.formatDate(r.upload_date)}
+              </span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      Layout.refreshIcons();
+    } catch {
+      document.getElementById('reports-list').innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="alert-circle" class="w-8 h-8 text-red-400"></i>
+          </div>
+          <h4 class="text-sm font-medium text-slate-400">Failed to load reports</h4>
+          <p class="text-xs text-slate-600 mt-1">Please try again later</p>
+        </div>
+      `;
+      Layout.refreshIcons();
+    }
+  }
+
+  load();
+</script>
+
+<style>
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .shimmer-state {
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
+{% endblock %}
