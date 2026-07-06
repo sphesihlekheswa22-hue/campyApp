@@ -1,6 +1,10 @@
 """Seed database with platform owner, demo companies, reports, analytics, and audit logs."""
 import argparse
+import os
 from datetime import datetime, timedelta, timezone
+
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 from app.analytics.engine import run_company_analytics
 from app.auth.security import hash_password
@@ -160,6 +164,35 @@ AUDIT_ACTIONS = [
 ]
 
 
+def _create_seed_pdf(full_path: str, company_name: str, years: dict | None = None) -> None:
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    c = canvas.Canvas(full_path, pagesize=letter)
+    _, height = letter
+    y = height - 50
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y, f"{company_name} - Integrated Annual Report 2024")
+    y -= 30
+    c.setFont("Helvetica", 11)
+    for category, content, _ in GOVERNANCE_TEMPLATES:
+        c.drawString(50, y, f"{category}: {content[:120]}")
+        y -= 18
+        if y < 80:
+            c.showPage()
+            y = height - 50
+    if years:
+        y -= 10
+        for year, metrics in sorted(years.items()):
+            c.drawString(50, y, f"Financial Year {year}")
+            y -= 18
+            for metric_name, value in metrics.items():
+                c.drawString(50, y, f"{metric_name}: {value:,.0f}")
+                y -= 16
+                if y < 80:
+                    c.showPage()
+                    y = height - 50
+    c.save()
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 
@@ -273,9 +306,13 @@ def seed_companies(db, owner: User):
 
         db.flush()
 
+        seed_rel = f"seed/{company.registration_number}_annual_2024.pdf"
+        seed_full = os.path.join(get_settings().upload_dir, seed_rel)
+        _create_seed_pdf(seed_full, company.company_name, spec["years"])
+
         main_report = AnnualReport(
             company_id=company.id,
-            file_path=f"uploads/seed/{company.registration_number}_annual_2024.pdf",
+            file_path=seed_rel,
             status=ReportStatus.complete,
         )
         db.add(main_report)
@@ -285,9 +322,12 @@ def seed_companies(db, owner: User):
         _add_governance(db, main_report.id)
 
         for i in range(spec.get("extra_reports", 0)):
+            interim_rel = f"seed/{company.registration_number}_interim_{i + 1}.pdf"
+            interim_full = os.path.join(get_settings().upload_dir, interim_rel)
+            _create_seed_pdf(interim_full, company.company_name)
             pending = AnnualReport(
                 company_id=company.id,
-                file_path=f"uploads/seed/{company.registration_number}_interim_{i + 1}.pdf",
+                file_path=interim_rel,
                 status=ReportStatus.pending if i == 0 else ReportStatus.processing,
             )
             db.add(pending)
@@ -331,12 +371,32 @@ def seed_analytics(company_ids: list[int]):
     print(f"[SEED] Analytics computed for {len(company_ids)} companies")
 
 
+def ensure_seed_pdf_files(db):
+    """Fix legacy paths and create missing demo PDF files."""
+    settings = get_settings()
+    for report in db.query(AnnualReport).all():
+        if report.file_path.startswith("uploads/seed/"):
+            report.file_path = report.file_path.replace("uploads/seed/", "seed/", 1)
+        full_path = os.path.join(settings.upload_dir, report.file_path)
+        if os.path.exists(full_path):
+            continue
+        company = db.query(Company).filter(Company.id == report.company_id).first()
+        if not company:
+            continue
+        spec = next((c for c in COMPANY_SEED if c["registration_number"] == company.registration_number), None)
+        years = spec["years"] if spec and "annual" in report.file_path else None
+        _create_seed_pdf(full_path, company.company_name, years)
+        print(f"[SEED] Created PDF: {report.file_path}")
+    db.commit()
+
+
 def seed(reset: bool = False):
     init_db()
     db = SessionLocal()
     try:
         if db.query(Company).count() > 0 and not reset:
             ensure_platform_owner(db)
+            ensure_seed_pdf_files(db)
             print("[SEED] Demo data already exists. Run with --reset to wipe and reseed.")
             return
 

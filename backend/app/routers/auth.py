@@ -51,6 +51,12 @@ from app.services.email_service import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.get("/registration-companies")
+def registration_companies(db: Session = Depends(get_db)):
+    companies = db.query(Company).order_by(Company.company_name).all()
+    return [{"id": c.id, "company_name": c.company_name} for c in companies]
+
+
 @router.post("/register/admin", response_model=RegistrationResponse)
 def register_admin(data: AdminRegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == data.email).first():

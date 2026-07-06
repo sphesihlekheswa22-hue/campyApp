@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_user, require_roles
 from app.config import get_settings
 from app.database.session import get_db
-from app.extraction.pipeline import run_extraction
+from app.extraction.pipeline import resolve_report_file_path, run_extraction
 from app.models import AnnualReport, ReportStatus, User, UserRole
 from app.schemas import ReportResponse
 from app.services.audit_service import log_audit
@@ -101,7 +101,7 @@ def download_report(
         raise HTTPException(status_code=404, detail="Report not found")
     if not _can_access_company(current_user, report.company_id):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    full_path = os.path.join(settings.upload_dir, report.file_path)
+    full_path = resolve_report_file_path(report.file_path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(full_path, media_type="application/pdf", filename=f"report_{report_id}.pdf")

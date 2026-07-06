@@ -195,6 +195,7 @@
 
 {% block scripts %}
 <script>
+  (function initCompaniesPage() {
   if (!Auth.requireAuth()) return;
   Layout.init();
   Layout.setBreadcrumbs([{ label: 'Companies', href: '/companies/index.html' }, { label: 'Directory' }]);
@@ -367,6 +368,7 @@
   observer.observe(addModal, { attributes: true });
 
   loadCompanies();
+  })();
 </script>
 
 <style>

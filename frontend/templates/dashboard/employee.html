@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Employee Dashboard - JSE Analytics{% endblock %}
 {% block page_title %}Employee Dashboard{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
 {% block content %}
 <!-- Welcome Section -->
 <div class="gradient-border p-6 mb-6 animate-fade-in">
@@ -19,10 +22,10 @@
         <i data-lucide="clock" class="w-3 h-3 mr-1 inline"></i>
         <span id="current-time">--:--</span>
       </span>
-      <button class="btn-premium btn-primary-glow" onclick="uploadReport()">
-        <i data-lucide="upload" class="w-4 h-4"></i>
-        Upload Report
-      </button>
+      <a href="/reports/index.html" class="btn-premium btn-primary-glow">
+        <i data-lucide="file-text" class="w-4 h-4"></i>
+        View Reports
+      </a>
     </div>
   </div>
 </div>
@@ -199,43 +202,26 @@
   updateClock();
   setInterval(updateClock, 60000);
 
+  let allReports = [];
+
   async function load() {
     try {
-      const user = await API.get('/users/me').catch(() => ({ 
-        name: 'Employee', 
-        email: 'employee@company.com',
-        role: 'employee',
-        company_id: 1 
-      }));
+      const user = await API.get('/users/me');
+      if (!user.company_id) {
+        document.getElementById('employee-name').textContent = user.name || 'Employee';
+        Layout.showToast('No company assigned to your account', 'warning');
+        return;
+      }
 
-      // Update welcome section
+      const [companies, reports, analytics, company] = await Promise.all([
+        API.get('/companies/'),
+        API.get('/reports/'),
+        user.company_id ? API.get(`/analytics/company/${user.company_id}`) : Promise.resolve({}),
+        user.company_id ? API.get(`/companies/${user.company_id}`) : Promise.resolve(null),
+      ]);
+      allReports = reports;
       document.getElementById('employee-name').textContent = user.name || user.email?.split('@')[0] || 'Employee';
       document.getElementById('employee-role').textContent = (user.role || 'employee').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-
-      // Fetch data in parallel
-      const [companies, reports, analytics] = await Promise.all([
-        API.get('/companies/').catch(() => [
-          { company_name: 'Acme Corp', registration_number: 'REG-2024-001', sector: 'Technology' }
-        ]),
-        API.get('/reports/').catch(() => [
-          { id: 1, status: 'complete', upload_date: '2024-01-15', report_type: 'Annual Report' },
-          { id: 2, status: 'processing', upload_date: '2024-01-14', report_type: 'Quarterly Review' },
-          { id: 3, status: 'pending', upload_date: '2024-01-13', report_type: 'Financial Statement' },
-          { id: 4, status: 'complete', upload_date: '2024-01-12', report_type: 'Tax Document' },
-          { id: 5, status: 'failed', upload_date: '2024-01-11', report_type: 'Audit Report' }
-        ]),
-        user.company_id ? API.get(`/analytics/company/${user.company_id}`).catch(() => ({
-          overall_score: 78,
-          financial_health_score: 82,
-          governance_score: 71,
-          years: ['2022', '2023', '2024'],
-          metrics_by_year: {
-            '2022': { Revenue: 1200000, Profit: 180000 },
-            '2023': { Revenue: 1450000, Profit: 220000 },
-            '2024': { Revenue: 1680000, Profit: 275000 }
-          }
-        })) : {}
-      ]);
 
       // KPI Cards
       document.getElementById('kpi-cards').innerHTML = `
@@ -274,17 +260,17 @@
         </div>`;
 
       // Company Info
-      const company = companies[0];
-      document.getElementById('company-info').innerHTML = company ? `
+      const assigned = company || companies[0];
+      document.getElementById('company-info').innerHTML = assigned ? `
         <div class="flex items-center gap-4 p-4 rounded-xl bg-slate-800/30">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">
             <i data-lucide="building-2" class="w-8 h-8 text-blue-400"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <h4 class="text-lg font-semibold text-slate-100 truncate">${company.company_name}</h4>
+            <h4 class="text-lg font-semibold text-slate-100 truncate">${assigned.company_name}</h4>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-xs text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded">${company.registration_number}</span>
-              <span class="text-xs text-slate-500">${company.industry || '—'}</span>
+              <span class="text-xs text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded">${assigned.registration_number}</span>
+              <span class="text-xs text-slate-500">${assigned.industry || '—'}</span>
             </div>
             ${analytics.overall_score ? `
             <div class="flex items-center gap-2 mt-2">
@@ -339,6 +325,7 @@
       `;
 
       document.getElementById('recent-reports').innerHTML = recentReports;
+      renderReports('all');
 
       // Extraction Status
       const statuses = { pending: 0, processing: 0, complete: 0, failed: 0 };
@@ -467,14 +454,14 @@
         });
       }
 
-      // Activity Timeline
-      const activities = [
-        { action: 'Report uploaded', detail: 'Report #5 - Annual Financial Statement', time: '2 hours ago', icon: 'upload', color: 'blue' },
-        { action: 'Extraction completed', detail: 'Report #4 - Tax Document', time: '5 hours ago', icon: 'check-circle', color: 'green' },
-        { action: 'Report uploaded', detail: 'Report #3 - Quarterly Review', time: '1 day ago', icon: 'upload', color: 'blue' },
-        { action: 'Login', detail: 'Successful authentication', time: '1 day ago', icon: 'log-in', color: 'purple' },
-        { action: 'Extraction failed', detail: 'Report #2 - Audit Report', time: '2 days ago', icon: 'alert-triangle', color: 'red' }
-      ];
+      // Activity Timeline (from recent reports)
+      const activities = reports.slice(0, 5).map(r => ({
+        action: r.status === 'complete' ? 'Extraction completed' : r.status === 'failed' ? 'Extraction failed' : 'Report uploaded',
+        detail: `Report #${r.id}`,
+        time: Utils.timeAgo(r.upload_date),
+        icon: r.status === 'complete' ? 'check-circle' : r.status === 'failed' ? 'alert-triangle' : 'upload',
+        color: r.status === 'complete' ? 'green' : r.status === 'failed' ? 'red' : 'blue',
+      }));
 
       document.getElementById('activity-timeline').innerHTML = activities.map(a => `
         <div class="activity-item">
@@ -536,10 +523,41 @@
 
   // Filter reports
   document.getElementById('report-filter')?.addEventListener('change', function() {
-    const filter = this.value;
-    // In a real app, this would filter the reports
-    Toast.show('info', `Filtering by: ${filter}`);
+    renderReports(this.value);
   });
+
+  function renderReports(filter = 'all') {
+    const list = document.getElementById('recent-reports');
+    if (!list) return;
+    let items = allReports;
+    if (filter !== 'all') items = items.filter(r => (r.status || '').toLowerCase() === filter);
+    if (!items.length) {
+      list.innerHTML = '<div class="flex items-center justify-center py-8 text-slate-500"><span>No reports match this filter</span></div>';
+      return;
+    }
+    const statusConfig = {
+      complete: { class: 'status-complete', icon: 'check-circle', label: 'Complete' },
+      processing: { class: 'status-processing', icon: 'loader', label: 'Processing' },
+      pending: { class: 'status-pending', icon: 'clock', label: 'Pending' },
+      failed: { class: 'status-failed', icon: 'alert-circle', label: 'Failed' },
+    };
+    list.innerHTML = items.slice(0, 5).map(r => {
+      const cfg = statusConfig[(r.status || '').toLowerCase()] || statusConfig.pending;
+      return `<div class="flex items-center justify-between py-3 border-b border-slate-700/20 last:border-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+            <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-200">Report #${r.id}</p>
+            <p class="text-xs text-slate-500">${Utils.formatDate(r.upload_date)}</p>
+          </div>
+        </div>
+        <span class="status-badge ${cfg.class}"><i data-lucide="${cfg.icon}" class="w-3 h-3"></i>${cfg.label}</span>
+      </div>`;
+    }).join('');
+    Layout.refreshIcons();
+  }
 
   load();
 </script>

@@ -61,15 +61,13 @@ def compute_governance_score(narratives: list) -> float:
 
 
 def classify_risk(financial_score: float, governance_score: float, metrics: dict) -> str:
-    model = _train_or_load_model()
-    revenue = metrics.get("Revenue", 0)
-    profit = metrics.get("Profit", 0)
-    assets = metrics.get("Assets", 0)
-    liabilities = metrics.get("Liabilities", 0)
-    equity = metrics.get("Equity", 0)
-    features = np.array([[financial_score, governance_score, revenue, profit, liabilities / max(assets, 1) * 100]])
-    prediction = model.predict(features)[0]
-    return prediction
+    combined = financial_score * 0.6 + governance_score * 0.4
+    leverage = metrics.get("Liabilities", 0) / max(metrics.get("Assets", 1), 1) * 100
+    if combined >= 70 and leverage < 60:
+        return "low"
+    if combined >= 45:
+        return "medium"
+    return "high"
 
 
 def run_company_analytics(company_id: int) -> None:
@@ -107,12 +105,17 @@ def run_company_analytics(company_id: int) -> None:
         overall_score = round(financial_score * 0.6 + governance_score * 0.4, 1)
         risk = classify_risk(financial_score, governance_score, current_metrics)
 
+        governance_metrics = {}
+        for narrative in narratives:
+            governance_metrics[narrative.category] = round(narrative.confidence_score * 100, 1)
+
         results = {
             "trends": trends,
             "years": years,
             "metrics_by_year": metrics_by_year,
             "financial_health_score": financial_score,
             "governance_score": governance_score,
+            "governance_metrics": governance_metrics,
             "overall_score": overall_score,
             "risk_classification": risk,
         }

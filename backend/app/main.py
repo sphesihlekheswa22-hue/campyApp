@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,7 +13,18 @@ from app.routers import auth, users, companies, reports, extractions, analytics,
 
 settings = get_settings()
 
-app = FastAPI(title="JSE Analytics Platform", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.extraction.pipeline import recover_pending_extractions
+    try:
+        recover_pending_extractions()
+    except Exception as e:
+        print(f"[STARTUP] Extraction recovery skipped: {e}")
+    yield
+
+
+app = FastAPI(title="JSE Analytics Platform", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

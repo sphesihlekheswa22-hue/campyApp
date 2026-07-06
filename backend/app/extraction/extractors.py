@@ -40,7 +40,25 @@ def extract_tables_from_pdf(file_path: str) -> list[Any]:
         for table in camelot_tables:
             tables.append(table.df)
     except Exception as e:
-        print(f"[EXTRACTION] Camelot error: {e}")
+        print(f"[EXTRACTION] Camelot unavailable: {e}")
+
+    if not tables:
+        try:
+            import pandas as pd
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    for raw_table in page.extract_tables() or []:
+                        if not raw_table or len(raw_table) < 2:
+                            continue
+                        header = raw_table[0]
+                        rows = raw_table[1:]
+                        if header and any(header):
+                            df = pd.DataFrame(rows, columns=header)
+                        else:
+                            df = pd.DataFrame(rows)
+                        tables.append(df)
+        except Exception as e:
+            print(f"[EXTRACTION] pdfplumber tables error: {e}")
     return tables
 
 

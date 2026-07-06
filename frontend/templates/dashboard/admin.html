@@ -188,24 +188,12 @@
   async function load() {
     try {
       // Fetch all data in parallel
-      const [health, logs, users] = await Promise.all([
-        API.get('/analytics/system-health').catch(() => ({
-          total_companies: 0,
-          total_users: 0,
-          total_reports: 0,
-          pending_extractions: 0,
-          status: 'Healthy',
-          database: 'Connected',
-          cpu_usage: 45,
-          memory_usage: 62,
-          disk_usage: 38,
-          network_usage: 28,
-          daily_active_users: [120, 135, 148, 162, 155, 178, 195],
-          reports_processed: [45, 52, 48, 61, 55, 67, 72],
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        })),
-        API.get('/audit/?search=').catch(() => []),
-        API.get('/users/').catch(() => [])
+      const [health, logs, users, companies, benchmark] = await Promise.all([
+        API.get('/analytics/system-health'),
+        API.get('/audit/?search='),
+        API.get('/users/'),
+        API.get('/companies/'),
+        API.get('/analytics/benchmark'),
       ]);
 
       // Update welcome name
@@ -280,17 +268,17 @@
 
       // Resource Usage
       const resources = [
-        { label: 'CPU Usage', value: health.cpu_usage || 45, color: '#3b82f6' },
-        { label: 'Memory', value: health.memory_usage || 62, color: '#8b5cf6' },
-        { label: 'Disk', value: health.disk_usage || 38, color: '#22c55e' },
-        { label: 'Network', value: health.network_usage || 28, color: '#f59e0b' }
+        { label: 'Companies', value: Math.min(100, health.total_companies * 10), color: '#3b82f6', display: health.total_companies },
+        { label: 'Users', value: Math.min(100, health.total_users * 2), color: '#8b5cf6', display: health.total_users },
+        { label: 'Reports', value: Math.min(100, health.total_reports * 5), color: '#22c55e', display: health.total_reports },
+        { label: 'Pending', value: Math.min(100, health.pending_extractions * 10), color: '#f59e0b', display: health.pending_extractions },
       ];
 
       document.getElementById('resource-usage').innerHTML = resources.map(r => `
         <div>
           <div class="flex justify-between items-center mb-1.5">
             <span class="text-sm text-slate-400">${r.label}</span>
-            <span class="text-sm font-semibold" style="color: ${r.color}">${r.value}%</span>
+            <span class="text-sm font-semibold" style="color: ${r.color}">${r.display}</span>
           </div>
           <div class="progress-bar">
             <div class="progress-bar-fill" style="width: ${r.value}%; background: ${r.color}"></div>
@@ -298,42 +286,27 @@
         </div>
       `).join('');
 
-      // Activity Chart
+      // Activity Chart (audit log breakdown)
+      const actionCounts = {};
+      logs.forEach(l => { actionCounts[l.action] = (actionCounts[l.action] || 0) + 1; });
+      const actionLabels = Object.keys(actionCounts);
+      const actionData = actionLabels.map(k => actionCounts[k]);
+
       const ctx = document.getElementById('activity-chart').getContext('2d');
       if (activityChart) activityChart.destroy();
 
       activityChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
-          labels: health.labels || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          datasets: [
-            {
-              label: 'Active Users',
-              data: health.daily_active_users || [120, 135, 148, 162, 155, 178, 195],
-              borderColor: '#3b82f6',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              fill: true,
-              tension: 0.4,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              pointBackgroundColor: '#3b82f6',
-              pointBorderColor: '#0f172a',
-              pointBorderWidth: 2
-            },
-            {
-              label: 'Reports Processed',
-              data: health.reports_processed || [45, 52, 48, 61, 55, 67, 72],
-              borderColor: '#22c55e',
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              fill: true,
-              tension: 0.4,
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              pointBackgroundColor: '#22c55e',
-              pointBorderColor: '#0f172a',
-              pointBorderWidth: 2
-            }
-          ]
+          labels: actionLabels.length ? actionLabels : ['No activity'],
+          datasets: [{
+            label: 'Audit events',
+            data: actionData.length ? actionData : [0],
+            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+            borderColor: '#3b82f6',
+            borderWidth: 1,
+            borderRadius: 6,
+          }]
         },
         options: {
           responsive: true,
@@ -408,16 +381,19 @@
 
       document.getElementById('recent-audit').innerHTML = recent;
 
-      // Top Companies
-      const topCompanies = [
-        { name: 'Acme Corp', reports: 124, growth: 15 },
-        { name: 'TechFlow Inc', reports: 98, growth: 8 },
-        { name: 'DataSystems', reports: 87, growth: -3 },
-        { name: 'CloudNine', reports: 76, growth: 22 },
-        { name: 'NextGen Ltd', reports: 65, growth: 5 }
-      ];
+      // Top Companies (from benchmark data)
+      const topCompanies = (benchmark.benchmarks || [])
+        .sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0))
+        .slice(0, 5)
+        .map(b => ({
+          name: b.company_name,
+          reports: companies.find(c => c.id === b.company_id)?.report_count || 0,
+          growth: b.overall_score || 0,
+        }));
 
-      document.getElementById('top-companies').innerHTML = topCompanies.map((c, i) => `
+      document.getElementById('top-companies').innerHTML = (topCompanies.length ? topCompanies : companies.slice(0, 5).map(c => ({
+        name: c.company_name, reports: c.report_count || 0, growth: 0
+      }))).map((c, i) => `
         <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-sm font-bold text-blue-400">
@@ -428,9 +404,9 @@
               <p class="text-xs text-slate-500">${c.reports} reports</p>
             </div>
           </div>
-          <div class="kpi-change ${c.growth >= 0 ? 'positive' : 'negative'}">
-            <i data-lucide="${c.growth >= 0 ? 'trending-up' : 'trending-down'}" class="w-3 h-3"></i>
-            ${c.growth >= 0 ? '+' : ''}${c.growth}%
+          <div class="kpi-change positive">
+            <i data-lucide="award" class="w-3 h-3"></i>
+            Score ${c.growth}
           </div>
         </div>
       `).join('');
@@ -439,12 +415,15 @@
       const userDistCtx = document.getElementById('user-distribution-chart').getContext('2d');
       if (userDistChart) userDistChart.destroy();
 
+      const roleCounts = { platform_owner: 0, company_admin: 0, employee: 0 };
+      users.forEach(u => { if (roleCounts[u.role] !== undefined) roleCounts[u.role]++; });
+
       userDistChart = new Chart(userDistCtx, {
         type: 'doughnut',
         data: {
           labels: ['Platform Owners', 'Company Admins', 'Employees'],
           datasets: [{
-            data: [5, 25, 120],
+            data: [roleCounts.platform_owner, roleCounts.company_admin, roleCounts.employee],
             backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e'],
             borderColor: '#0f172a',
             borderWidth: 3,

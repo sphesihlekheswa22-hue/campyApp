@@ -70,6 +70,7 @@
 
 {% block scripts %}
 <script>
+  (function initCompanyDetailPage() {
   if (!Auth.requireAuth()) return;
   Layout.init();
   Layout.setBreadcrumbs([{ label: 'Companies' }]);
@@ -272,6 +273,9 @@
                 <i data-lucide="calendar" class="w-3 h-3"></i>
                 ${Utils.formatDate(r.upload_date)}
               </span>
+              <button class="btn-premium btn-secondary-glass px-2 py-1 text-xs" onclick="API.download('/reports/${r.id}/download', 'report_${r.id}.pdf').catch(e => Layout.showToast(e.message, 'error'))">
+                <i data-lucide="download" class="w-3 h-3"></i>
+              </button>
             </div>
           </div>`;
         }).join('');
@@ -292,6 +296,7 @@
   }
 
   load();
+  })();
 </script>
 
 <style>

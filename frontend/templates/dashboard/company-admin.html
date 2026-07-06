@@ -187,30 +187,16 @@
 
   async function load() {
     try {
-      const user = await API.get('/users/me').catch(() => ({ company_id: 1, name: 'User' }));
+      const user = await API.get('/users/me');
       if (!user.company_id) {
         document.getElementById('company-name').textContent = 'No Company Assigned';
         return;
       }
 
-      // Fetch data in parallel
       const [data, reports, company] = await Promise.all([
-        API.get(`/analytics/company/${user.company_id}`).catch(() => ({
-          overall_score: 78,
-          financial_health_score: 82,
-          governance_score: 71,
-          risk_classification: 'Low',
-          years: ['2022', '2023', '2024'],
-          metrics_by_year: {
-            '2022': { Revenue: 1200000, Profit: 180000, Assets: 2500000, Liabilities: 800000 },
-            '2023': { Revenue: 1450000, Profit: 220000, Assets: 2800000, Liabilities: 750000 },
-            '2024': { Revenue: 1680000, Profit: 275000, Assets: 3200000, Liabilities: 700000 }
-          },
-          trends: { revenue_growth: 15.9, profit_growth: 25.0, asset_growth: 12.5, liability_change: -6.7 },
-          governance_metrics: { transparency: 85, compliance: 78, board_structure: 65, risk_management: 72 }
-        })),
-        API.get('/reports/').catch(() => []),
-        API.get(`/companies/${user.company_id}`).catch(() => null)
+        API.get(`/analytics/company/${user.company_id}`),
+        API.get('/reports/'),
+        API.get(`/companies/${user.company_id}`),
       ]);
 
       // Update company info
@@ -520,17 +506,22 @@
       });
 
       // Governance Radar Chart
-      const govMetrics = data.governance_metrics || { transparency: 85, compliance: 78, board_structure: 65, risk_management: 72 };
+      const govMetrics = data.governance_metrics || {};
+      const govLabels = Object.keys(govMetrics);
+      const govValues = govLabels.map(k => govMetrics[k]);
+      const defaultLabels = ['Board Structure', 'Risk Management', 'Compliance', 'Sustainability'];
+      const radarLabels = govLabels.length ? govLabels : defaultLabels;
+      const radarValues = govValues.length ? govValues : defaultLabels.map(() => data.governance_score || 0);
       const radarCtx = document.getElementById('governance-radar').getContext('2d');
       if (governanceRadar) governanceRadar.destroy();
 
       governanceRadar = new Chart(radarCtx, {
         type: 'radar',
         data: {
-          labels: ['Transparency', 'Compliance', 'Board Structure', 'Risk Mgmt'],
+          labels: radarLabels,
           datasets: [{
             label: 'Current',
-            data: [govMetrics.transparency, govMetrics.compliance, govMetrics.board_structure, govMetrics.risk_management],
+            data: radarValues,
             backgroundColor: 'rgba(139, 92, 246, 0.2)',
             borderColor: '#8b5cf6',
             borderWidth: 2,
