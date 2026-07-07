@@ -11,7 +11,7 @@ const Layout = {
     ],
     company_admin: [
       { href: '/dashboard/company-admin.html', label: 'Dashboard', icon: 'layout-dashboard' },
-      { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company' },
+      { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company', tooltip: 'Your company profile' },
       { href: '/reports/index.html', label: 'Reports', icon: 'file-text' },
       { href: '/analytics/index.html', label: 'Analytics', icon: 'trending-up' },
       { href: '/governance/index.html', label: 'Governance', icon: 'shield' },
@@ -19,7 +19,7 @@ const Layout = {
     ],
     employee: [
       { href: '/dashboard/employee.html', label: 'Dashboard', icon: 'layout-dashboard' },
-      { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company' },
+      { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company', tooltip: 'Your company profile' },
       { href: '/reports/index.html', label: 'Reports', icon: 'file-text' },
       { href: '/analytics/index.html', label: 'Analytics', icon: 'bar-chart-2' },
       { href: '/governance/index.html', label: 'Governance', icon: 'shield' },

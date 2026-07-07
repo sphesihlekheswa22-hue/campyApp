@@ -223,17 +223,18 @@
       document.getElementById('employee-name').textContent = user.name || user.email?.split('@')[0] || 'Employee';
       document.getElementById('employee-role').textContent = (user.role || 'employee').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
-      // KPI Cards
+      // KPI Cards — employee sees their one assigned company, not a directory
+      const assigned = company || companies[0];
       document.getElementById('kpi-cards').innerHTML = `
         <div class="kpi-card">
           <div class="kpi-icon bg-blue-500/10">
             <i data-lucide="building-2" class="w-6 h-6 text-blue-400"></i>
           </div>
-          <div class="kpi-value text-blue-400">${companies.length}</div>
-          <div class="kpi-label">Companies</div>
+          <div class="kpi-value text-blue-400 text-xl truncate" title="${assigned?.company_name || ''}">${assigned?.company_name ? assigned.company_name.split(' ')[0] : '—'}</div>
+          <div class="kpi-label">My Company</div>
           <div class="kpi-change positive">
             <i data-lucide="check-circle" class="w-3 h-3"></i>
-            Active access
+            Your assignment
           </div>
         </div>
         <div class="kpi-card">
@@ -260,7 +261,6 @@
         </div>`;
 
       // Company Info
-      const assigned = company || companies[0];
       document.getElementById('company-info').innerHTML = assigned ? `
         <div class="flex items-center gap-4 p-4 rounded-xl bg-slate-800/30">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0">

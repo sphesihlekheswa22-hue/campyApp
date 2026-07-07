@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Company Detail - JSE Analytics{% endblock %}
-{% block page_title %}Company Detail{% endblock %}
+{% block title %}My Company - JSE Analytics{% endblock %}
+{% block page_title %}<span id="layout-page-title">My Company</span>{% endblock %}
 
 {% block content %}
 <!-- Breadcrumb -->
 <div class="flex items-center gap-2 mb-6 text-sm">
-  <a href="/companies/index.html" class="breadcrumb-item hover:text-blue-400 transition-colors">Companies</a>
+  <a href="/companies/index.html" id="breadcrumb-root" class="breadcrumb-item hover:text-blue-400 transition-colors">Companies</a>
   <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
   <span class="text-slate-300 font-medium" id="breadcrumb-company">Loading...</span>
 </div>
@@ -72,12 +72,31 @@
 <script>
   (async function initCompanyDetailPage() {
   if (!Auth.guardPage()) return;
+
+  const isPlatformOwner = Auth.canAccess(['platform_owner']);
+  if (!isPlatformOwner) {
+    const root = document.getElementById('breadcrumb-root');
+    const title = document.getElementById('layout-page-title');
+    if (root) {
+      root.textContent = 'My Company';
+      root.href = Auth.getDashboardUrl();
+    }
+    if (title) title.textContent = 'My Company';
+    document.title = 'My Company - JSE Analytics';
+  }
+
   Layout.init();
-  Layout.setBreadcrumbs([{ label: 'Companies', href: Auth.canAccess(['platform_owner']) ? '/companies/index.html' : Auth.getDashboardUrl() }]);
+  Layout.setBreadcrumbs([
+    {
+      label: isPlatformOwner ? 'Companies' : 'My Company',
+      href: isPlatformOwner ? '/companies/index.html' : Auth.getDashboardUrl(),
+    },
+  ]);
   const id = Utils.getParam('id');
   if (!id) {
     if (await Auth.redirectIfNotCompanyDirectory()) return;
-    location.href = '/companies/index.html';
+    if (isPlatformOwner) location.href = '/companies/index.html';
+    else Auth.redirectByRole();
     return;
   }
   if (!await Auth.guardCompanyAccess(id)) return;

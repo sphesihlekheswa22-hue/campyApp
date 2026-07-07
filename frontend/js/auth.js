@@ -137,6 +137,11 @@ const Auth = {
     this.redirectByRole();
     return true;
   },
+
+  /** Send non-owners away from the companies directory to their company profile. */
+  async ensureMyCompanyProfile() {
+    return this.redirectIfNotCompanyDirectory();
+  },
 };
 
 window.Auth = Auth;
