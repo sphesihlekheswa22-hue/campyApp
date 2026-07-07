@@ -70,15 +70,17 @@
 
 {% block scripts %}
 <script>
-  (function initCompanyDetailPage() {
-  if (!Auth.requireAuth()) return;
+  (async function initCompanyDetailPage() {
+  if (!Auth.guardPage()) return;
   Layout.init();
-  Layout.setBreadcrumbs([{ label: 'Companies' }]);
+  Layout.setBreadcrumbs([{ label: 'Companies', href: Auth.canAccess(['platform_owner']) ? '/companies/index.html' : Auth.getDashboardUrl() }]);
   const id = Utils.getParam('id');
   if (!id) {
+    if (await Auth.redirectIfNotCompanyDirectory()) return;
     location.href = '/companies/index.html';
     return;
   }
+  if (!await Auth.guardCompanyAccess(id)) return;
 
   async function load() {
     try {

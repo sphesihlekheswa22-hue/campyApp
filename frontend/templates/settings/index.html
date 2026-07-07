@@ -119,7 +119,7 @@
 {% block scripts %}
 <script>
   (function initSettingsPage() {
-    if (!Auth.requireAuth()) return;
+    if (!Auth.guardPage()) return;
     Layout.init();
     Layout.setBreadcrumbs([{ label: 'Settings' }]);
 
@@ -132,7 +132,7 @@
         document.getElementById('gender').value = user.gender || '';
         document.getElementById('profile-name').textContent = `${user.name} ${user.surname}`;
         document.getElementById('profile-email').textContent = user.email;
-        document.getElementById('profile-role').textContent = (user.role || '').replace(/_/g, ' ');
+        document.getElementById('profile-role').textContent = Auth.getRoleLabel() || (user.role || '').replace(/_/g, ' ');
         document.getElementById('avatar-initials').textContent =
           `${(user.name || 'U')[0]}${(user.surname || '')[0] || ''}`.toUpperCase();
 

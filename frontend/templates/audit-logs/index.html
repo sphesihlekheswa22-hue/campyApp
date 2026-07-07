@@ -112,12 +112,7 @@
 {% block scripts %}
 <script>
   (function initAuditPage() {
-    if (!Auth.requireAuth()) return;
-    if (!Auth.canAccess(['platform_owner'])) {
-      Layout.showToast('Audit logs are only available to platform owners', 'error');
-      setTimeout(() => Auth.redirectByRole(), 800);
-      return;
-    }
+    if (!Auth.guardPage(['platform_owner'])) return;
 
     Layout.init();
     Layout.setBreadcrumbs([

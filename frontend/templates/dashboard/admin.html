@@ -179,7 +179,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-  if (!Auth.requireAuth() || !Auth.canAccess(['platform_owner'])) location.href = '/auth/login.html';
+  if (!Auth.guardPage(['platform_owner'])) return;
   Layout.init();
 
   let activityChart = null;

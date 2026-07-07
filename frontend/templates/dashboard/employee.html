@@ -119,12 +119,12 @@
       </div>
     </div>
     <div class="grid grid-cols-2 gap-3">
-      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-blue-500/20 transition-all group text-left" onclick="uploadReport()">
+      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-blue-500/20 transition-all group text-left" onclick="viewAllReports()">
         <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
-          <i data-lucide="upload" class="w-5 h-5 text-blue-400"></i>
+          <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
         </div>
-        <p class="text-sm font-medium text-slate-200">Upload Report</p>
-        <p class="text-xs text-slate-500 mt-1">Add new document</p>
+        <p class="text-sm font-medium text-slate-200">View Reports</p>
+        <p class="text-xs text-slate-500 mt-1">Browse company reports</p>
       </button>
       <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-purple-500/20 transition-all group text-left" onclick="viewAnalytics()">
         <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3 group-hover:bg-purple-500/20 transition-colors">
@@ -133,12 +133,12 @@
         <p class="text-sm font-medium text-slate-200">View Analytics</p>
         <p class="text-xs text-slate-500 mt-1">Check company metrics</p>
       </button>
-      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-green-500/20 transition-all group text-left" onclick="exportData()">
-        <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center mb-3 group-hover:bg-green-500/20 transition-colors">
-          <i data-lucide="download" class="w-5 h-5 text-green-400"></i>
+      <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-emerald-500/20 transition-all group text-left" onclick="location.href='/governance/index.html'">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-3 group-hover:bg-emerald-500/20 transition-colors">
+          <i data-lucide="shield" class="w-5 h-5 text-emerald-400"></i>
         </div>
-        <p class="text-sm font-medium text-slate-200">Export Data</p>
-        <p class="text-xs text-slate-500 mt-1">Download reports</p>
+        <p class="text-sm font-medium text-slate-200">Governance</p>
+        <p class="text-xs text-slate-500 mt-1">Read narratives</p>
       </button>
       <button class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/20 hover:bg-slate-800/50 hover:border-yellow-500/20 transition-all group text-left" onclick="openSettings()">
         <div class="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-3 group-hover:bg-yellow-500/20 transition-colors">
@@ -186,7 +186,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-  if (!Auth.requireAuth() || !Auth.canAccess(['employee'])) location.href = '/auth/login.html';
+  if (!Auth.guardPage(['employee'])) return;
   Layout.init();
 
   let companyAnalyticsChart = null;

@@ -70,7 +70,7 @@
 {% block scripts %}
 <script>
   (function initGovernancePage() {
-    if (!Auth.requireAuth()) return;
+    if (!Auth.guardPage()) return;
     Layout.init();
     Layout.setBreadcrumbs([{ label: 'Governance' }]);
 

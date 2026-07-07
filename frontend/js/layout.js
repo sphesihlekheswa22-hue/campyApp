@@ -11,7 +11,7 @@ const Layout = {
     ],
     company_admin: [
       { href: '/dashboard/company-admin.html', label: 'Dashboard', icon: 'layout-dashboard' },
-      { href: '/companies/index.html', label: 'My Company', icon: 'building-2' },
+      { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company' },
       { href: '/reports/index.html', label: 'Reports', icon: 'file-text' },
       { href: '/analytics/index.html', label: 'Analytics', icon: 'trending-up' },
       { href: '/governance/index.html', label: 'Governance', icon: 'shield' },
@@ -19,9 +19,9 @@ const Layout = {
     ],
     employee: [
       { href: '/dashboard/employee.html', label: 'Dashboard', icon: 'layout-dashboard' },
-      { href: '/companies/index.html', label: 'Companies', icon: 'building-2' },
+      { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company' },
       { href: '/reports/index.html', label: 'Reports', icon: 'file-text' },
-      { href: '/analytics/index.html', label: 'Analytics', icon: 'trending-up' },
+      { href: '/analytics/index.html', label: 'Analytics', icon: 'bar-chart-2' },
       { href: '/governance/index.html', label: 'Governance', icon: 'shield' },
       { href: '/settings/index.html', label: 'Settings', icon: 'settings' },
     ],
@@ -38,15 +38,33 @@ const Layout = {
     });
   },
 
-  init() {
+  async init() {
     const role = Auth.getRole();
     const path = window.location.pathname;
     const nav = document.getElementById('sidebar-nav');
 
+    let menu = [...(this.menus[role] || [])];
+
+    if (Auth.isLoggedIn() && (role === 'company_admin' || role === 'employee')) {
+      try {
+        const user = await API.get('/users/me');
+        if (user.company_id) {
+          sessionStorage.setItem('company_id', user.company_id);
+          menu = menu.map((item) => {
+            if (item.dynamic === 'company') {
+              return { ...item, href: `/companies/detail.html?id=${user.company_id}` };
+            }
+            return item;
+          });
+        }
+      } catch {
+        /* profile optional */
+      }
+    }
+
     if (nav) {
-      const menu = this.menus[role] || [];
       nav.innerHTML = menu.map((item) => {
-        const segment = item.href.replace('/index.html', '').replace('.html', '');
+        const segment = item.href.replace('/index.html', '').replace('.html', '').split('?')[0];
         const active = path.includes(segment) ? 'active' : '';
         return `
           <a href="${item.href}" class="nav-link ${active} tooltip" data-tooltip="${item.label}">
@@ -60,10 +78,10 @@ const Layout = {
 
     const roleLabel = document.getElementById('user-role-label');
     if (roleLabel && role) {
-      roleLabel.textContent = role.replace(/_/g, ' ');
+      roleLabel.textContent = Auth.getRoleLabel();
     }
 
-    this.loadUserProfile();
+    await this.loadUserProfile();
 
     const sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
     const sidebar = document.getElementById('sidebar');
@@ -77,6 +95,7 @@ const Layout = {
     if (!Auth.isLoggedIn()) return;
     try {
       const user = await API.get('/users/me');
+      if (user.company_id) sessionStorage.setItem('company_id', user.company_id);
       const initials = `${(user.name || 'U')[0]}${(user.surname || '')[0] || ''}`.toUpperCase();
       const initialsEl = document.getElementById('user-initials');
       const nameEl = document.getElementById('user-name');
@@ -213,7 +232,6 @@ const Layout = {
 
 window.Layout = Layout;
 
-/** Dashboard templates use Toast.show(type, message) */
 const Toast = {
   show(type, message) {
     Layout.showToast(message, type);

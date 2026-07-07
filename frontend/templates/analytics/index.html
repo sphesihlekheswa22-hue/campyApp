@@ -16,7 +16,7 @@
       </select>
       <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
     </div>
-    <button class="btn-premium btn-primary-glow whitespace-nowrap" onclick="runAnalysis()">
+    <button id="run-analysis-btn" class="btn-premium btn-primary-glow whitespace-nowrap" onclick="runAnalysis()">
       <i data-lucide="play" class="w-4 h-4"></i>
       <span>Run Analysis</span>
     </button>
@@ -88,8 +88,8 @@
   </div>
 </div>
 
-<!-- Comparison Section -->
-<div class="card-premium p-6 animate-slide-up" style="animation-delay: 0.3s;">
+<!-- Comparison Section (platform owner only) -->
+<div id="comparison-section" class="card-premium p-6 animate-slide-up" style="animation-delay: 0.3s;">
   <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
@@ -110,17 +110,23 @@
 
 {% block scripts %}
 <script>
-  if (!Auth.requireAuth()) location.href = '/auth/login.html';
+  if (!Auth.guardPage()) return;
   Layout.init();
 
   Layout.setBreadcrumbs([
-    { label: 'Dashboard', href: '/' },
+    { label: 'Dashboard', href: Auth.getDashboardUrl() },
     { label: 'Analytics' }
   ]);
 
-  if (!Auth.canAccess(['employee'])) {
+  if (Auth.hasPermission('export_analytics')) {
     document.getElementById('export-pdf').classList.remove('hidden');
     document.getElementById('export-excel').classList.remove('hidden');
+  }
+  if (!Auth.hasPermission('run_analytics')) {
+    document.getElementById('run-analysis-btn')?.classList.add('hidden');
+  }
+  if (!Auth.hasPermission('company_comparison')) {
+    document.getElementById('comparison-section')?.classList.add('hidden');
   }
 
   let companies = [];
@@ -144,10 +150,21 @@
           </label>
         `).join('');
         document.querySelectorAll('.compare-check').forEach(cb => cb.addEventListener('change', loadComparison));
+      } else if (Auth.canAccess(['employee', 'company_admin'])) {
+        const select = document.getElementById('company-select');
+        const user = await API.get('/users/me');
+        if (user.company_id) {
+          const mine = companies.find(c => c.id === user.company_id) || companies[0];
+          if (mine) {
+            select.innerHTML = `<option value="${mine.id}">${mine.company_name}</option>`;
+            select.value = mine.id;
+            select.disabled = true;
+          }
+        }
       }
 
       if (companies.length > 0) {
-        select.value = companies[0].id;
+        if (!select.disabled) select.value = companies[0].id;
         loadAnalytics();
       }
       loadBenchmark();
@@ -159,6 +176,10 @@
   }
 
   async function runAnalysis() {
+    if (!Auth.hasPermission('run_analytics')) {
+      Layout.showToast('You do not have permission to run analysis', 'warning');
+      return;
+    }
     const id = document.getElementById('company-select').value;
     if (!id) {
       Layout.showToast('Please select a company first', 'warning');

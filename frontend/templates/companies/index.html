@@ -196,10 +196,10 @@
 {% block scripts %}
 <script>
   (function initCompaniesPage() {
-  if (!Auth.requireAuth()) return;
+  if (!Auth.guardPage(['platform_owner'])) return;
   Layout.init();
   Layout.setBreadcrumbs([{ label: 'Companies', href: '/companies/index.html' }, { label: 'Directory' }]);
-  if (Auth.canAccess(['platform_owner'])) document.getElementById('add-btn').classList.remove('hidden');
+  if (Auth.hasPermission('create_company')) document.getElementById('add-btn').classList.remove('hidden');
 
   async function loadCompanies(search = '') {
     try {

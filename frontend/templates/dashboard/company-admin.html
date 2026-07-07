@@ -178,7 +178,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-  if (!Auth.requireAuth() || !Auth.canAccess(['company_admin'])) location.href = '/auth/login.html';
+  if (!Auth.guardPage(['company_admin'])) return;
   Layout.init();
 
   let trendChart = null;

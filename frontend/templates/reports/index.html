@@ -131,11 +131,11 @@
 {% block scripts %}
 <script>
   (function initReportsPage() {
-    if (!Auth.requireAuth()) return;
+    if (!Auth.guardPage()) return;
     Layout.init();
     Layout.setBreadcrumbs([{ label: 'Reports' }]);
 
-    if (Auth.canAccess(['platform_owner', 'company_admin'])) {
+    if (Auth.hasPermission('upload_reports')) {
       document.getElementById('upload-section').classList.remove('hidden');
     }
 
@@ -152,7 +152,7 @@
         allReports = reports;
         companyMap = Object.fromEntries(companies.map(c => [c.id, c.company_name]));
 
-        if (Auth.canAccess(['platform_owner', 'company_admin'])) {
+        if (Auth.hasPermission('upload_reports')) {
           document.getElementById('company-select').innerHTML = companies.map(c =>
             `<option value="${c.id}">${c.company_name}</option>`
           ).join('');
@@ -200,7 +200,7 @@
         return;
       }
 
-      const canManage = Auth.canAccess(['platform_owner', 'company_admin']);
+      const canManage = Auth.hasPermission('retry_extraction');
       tbody.innerHTML = filtered.map(r => {
         const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
         return `<tr class="hover:bg-slate-800/30 transition-colors group">
