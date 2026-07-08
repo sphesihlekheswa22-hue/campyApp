@@ -184,8 +184,8 @@
 
     async function loadUsers(search = '') {
       try {
-        const params = search ? `?search=${encodeURIComponent(search)}` : '';
-        users = await API.get(`/users/${params}`);
+        const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+        users = await API.get(`/users/${qs}`);
         renderUsers(users);
       } catch (err) {
         document.querySelector('#users-table tbody').innerHTML = `

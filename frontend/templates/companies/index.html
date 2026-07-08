@@ -257,7 +257,14 @@
     Layout.closeModal();
   };
 
+  let companiesLoading = false;
+
   async function loadCompanies(search = '') {
+    if (companiesLoading) return;
+    companiesLoading = true;
+    const subtitle = document.getElementById('table-subtitle');
+    if (subtitle) subtitle.textContent = 'Loading companies...';
+
     try {
       const companies = await API.get(`/companies/?search=${encodeURIComponent(search)}`);
 
@@ -339,6 +346,7 @@
       }
       Layout.refreshIcons(document.getElementById('companies-table'));
     } catch (err) {
+      if (subtitle) subtitle.textContent = 'Failed to load companies';
       document.querySelector('#companies-table tbody').innerHTML = `
         <tr>
           <td colspan="6" class="py-12 text-center">
@@ -357,6 +365,8 @@
         </tr>
       `;
       Layout.refreshIcons(document.getElementById('companies-table'));
+    } finally {
+      companiesLoading = false;
     }
   }
 

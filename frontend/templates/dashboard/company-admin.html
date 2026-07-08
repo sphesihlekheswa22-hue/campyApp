@@ -178,6 +178,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+  (async function () {
   if (!Auth.guardPage(['company_admin'])) return;
   Layout.init();
 
@@ -669,5 +670,6 @@
   }
 
   load();
+  })();
 </script>
 {% endblock %}

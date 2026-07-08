@@ -30,6 +30,7 @@ const Layout = {
   },
 
   _iconRefreshScheduled: false,
+  _initStarted: false,
 
   refreshIcons(root) {
     if (typeof lucide === 'undefined' || this._iconRefreshScheduled) return;
@@ -41,6 +42,9 @@ const Layout = {
   },
 
   async init() {
+    if (this._initStarted) return;
+    this._initStarted = true;
+
     const role = Auth.getRole();
     const path = window.location.pathname;
     const nav = document.getElementById('sidebar-nav');
@@ -75,7 +79,7 @@ const Layout = {
           </a>`;
       }).join('');
 
-      this.refreshIcons();
+      this.refreshIcons(nav);
     }
 
     const roleLabel = document.getElementById('user-role-label');

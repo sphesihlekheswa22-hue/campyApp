@@ -110,6 +110,7 @@
 
 {% block scripts %}
 <script>
+  (async function () {
   if (!Auth.guardPage()) return;
   Layout.init();
 
@@ -496,5 +497,6 @@
   window.exportExcel = exportExcel;
 
   init();
+  })();
 </script>
 {% endblock %}

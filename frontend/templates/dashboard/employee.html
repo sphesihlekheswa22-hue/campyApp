@@ -186,6 +186,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+  (async function () {
   if (!Auth.guardPage(['employee'])) return;
   Layout.init();
 
@@ -560,5 +561,6 @@
   }
 
   load();
+  })();
 </script>
 {% endblock %}

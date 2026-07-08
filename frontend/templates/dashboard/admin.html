@@ -179,13 +179,17 @@
 {% endblock %}
 {% block scripts %}
 <script>
+  (async function () {
   if (!Auth.guardPage(['platform_owner'])) return;
   Layout.init();
 
   let activityChart = null;
   let userDistChart = null;
+  let dashboardLoading = false;
 
   async function load() {
+    if (dashboardLoading) return;
+    dashboardLoading = true;
     try {
       // Fetch all data in parallel
       const [health, logs, users, companies, benchmark] = await Promise.all([
@@ -454,7 +458,9 @@
 
     } catch (e) { 
       console.error(e);
-      Toast.show('error', 'Failed to load dashboard data');
+      Toast.show('error', e.message || 'Failed to load dashboard data');
+    } finally {
+      dashboardLoading = false;
     }
   }
 
@@ -469,5 +475,6 @@
   }, 30000);
 
   load();
+  })();
 </script>
 {% endblock %}
