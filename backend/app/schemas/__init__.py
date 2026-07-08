@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.models import ReportStatus, SubscriptionStatus, UserRole
 
@@ -133,6 +133,17 @@ class CompanyCreateRequest(BaseModel):
     website: Optional[str] = None
     industry: Optional[str] = None
     subscription_status: SubscriptionStatus = SubscriptionStatus.trial
+    admin_email: Optional[EmailStr] = None
+    admin_password: Optional[str] = Field(default=None, min_length=8)
+    admin_name: Optional[str] = None
+    admin_surname: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_admin_fields(self):
+        admin_fields = [self.admin_email, self.admin_password, self.admin_name, self.admin_surname]
+        if any(admin_fields) and not all(admin_fields):
+            raise ValueError("All company admin fields are required when adding an admin")
+        return self
 
 
 class CompanyUpdateRequest(BaseModel):

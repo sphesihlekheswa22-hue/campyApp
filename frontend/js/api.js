@@ -34,7 +34,12 @@ const API = {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       const detail = data.detail;
-      const msg = Array.isArray(detail) ? detail.map(d => d.msg).join(', ') : (detail || data.message || 'Request failed');
+      let msg = data.message || 'Request failed';
+      if (Array.isArray(detail)) {
+        msg = detail.map((d) => d.msg || JSON.stringify(d)).join('; ');
+      } else if (typeof detail === 'string') {
+        msg = detail;
+      }
       throw new Error(msg);
     }
     return data;

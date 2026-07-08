@@ -5,6 +5,7 @@ const Auth = {
     '/dashboard/employee.html': ['employee'],
     '/companies/index.html': ['platform_owner'],
     '/companies/detail.html': ['platform_owner', 'company_admin', 'employee'],
+    '/team/index.html': ['platform_owner', 'company_admin'],
     '/reports/index.html': ['platform_owner', 'company_admin', 'employee'],
     '/analytics/index.html': ['platform_owner', 'company_admin', 'employee'],
     '/governance/index.html': ['platform_owner', 'company_admin', 'employee'],
@@ -15,9 +16,9 @@ const Auth = {
   PERMISSIONS: {
     platform_owner: [
       'upload_reports', 'export_analytics', 'run_analytics', 'manage_companies',
-      'view_audit', 'company_comparison', 'retry_extraction', 'create_company',
+      'view_audit', 'company_comparison', 'retry_extraction', 'create_company', 'manage_users',
     ],
-    company_admin: ['upload_reports', 'export_analytics', 'run_analytics', 'retry_extraction'],
+    company_admin: ['upload_reports', 'export_analytics', 'run_analytics', 'retry_extraction', 'manage_users'],
     employee: ['view_reports', 'view_analytics', 'view_governance'],
   },
 

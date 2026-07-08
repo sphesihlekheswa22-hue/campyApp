@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Team - JSE Analytics{% endblock %}
+{% block page_title %}<span id="layout-page-title">Team</span>{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+  <div class="relative w-full sm:w-80">
+    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+    <input type="search" id="search" class="search-premium pl-10" placeholder="Search by name or email…">
+  </div>
+  <button id="add-btn" class="btn-premium btn-primary-glow" onclick="openAddModal()">
+    <i data-lucide="user-plus" class="w-4 h-4"></i>
+    <span id="add-btn-label">Add User</span>
+  </button>
+</div>
+
+<div class="card-premium overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full" id="users-table">
+      <thead>
+        <tr class="border-b border-slate-700/30">
+          <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider">User</th>
+          <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
+          <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider hidden" id="company-col">Company</th>
+          <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+          <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider">Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="5" class="py-12 text-center text-sm text-slate-500">Loading team members…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="add-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60" onclick="closeAddModal()"></div>
+  <div class="relative bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-auto" id="add-modal-content">
+    <div class="p-6 border-b border-slate-700/30 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
+          <i data-lucide="user-plus" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100" id="modal-title">Add User</h3>
+          <p class="text-xs text-slate-500" id="modal-subtitle">Create an account for your organization</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeAddModal()" class="p-2 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="add-form" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">First Name *</label>
+        <input name="name" class="search-premium" required>
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Last Name *</label>
+        <input name="surname" class="search-premium" required>
+      </div>
+      <div class="space-y-1.5 md:col-span-2">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Email *</label>
+        <input name="email" type="email" class="search-premium" required>
+      </div>
+      <div class="space-y-1.5 md:col-span-2">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Temporary Password *</label>
+        <input name="password" type="password" class="search-premium" minlength="8" required>
+      </div>
+      <div class="space-y-1.5 hidden" id="role-field">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Role *</label>
+        <select name="role" class="search-premium appearance-none cursor-pointer">
+          <option value="employee">Employee</option>
+          <option value="company_admin">Company Admin</option>
+        </select>
+      </div>
+      <div class="space-y-1.5 hidden" id="company-field">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Company *</label>
+        <select name="company_id" class="search-premium appearance-none cursor-pointer" id="company-select">
+          <option value="">Select company…</option>
+        </select>
+      </div>
+      <div class="md:col-span-2 pt-2">
+        <button type="submit" class="btn-premium btn-primary-glow w-full py-3">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Create Account</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function initTeamPage() {
+    if (!Auth.guardPage()) return;
+    Layout.init();
+
+    const role = Auth.getRole();
+    const isOwner = role === 'platform_owner';
+    const pageLabel = isOwner ? 'Users' : 'Team';
+    Layout.setBreadcrumbs([{ label: pageLabel }]);
+
+    document.getElementById('layout-page-title').textContent = pageLabel;
+    document.title = `${pageLabel} - JSE Analytics`;
+
+    if (isOwner) {
+      document.getElementById('company-col').classList.remove('hidden');
+      document.getElementById('role-field').classList.remove('hidden');
+      document.getElementById('company-field').classList.remove('hidden');
+    } else {
+      document.getElementById('add-btn-label').textContent = 'Add Employee';
+      document.getElementById('modal-title').textContent = 'Add Employee';
+      document.getElementById('modal-subtitle').textContent = 'Invite a team member to your company';
+    }
+
+    const roleLabels = {
+      platform_owner: 'Platform Owner',
+      company_admin: 'Company Admin',
+      employee: 'Employee',
+    };
+
+    let companies = [];
+    let users = [];
+
+    async function loadCompanies() {
+      if (!isOwner) return;
+      companies = await API.get('/companies/');
+      const select = document.getElementById('company-select');
+      select.innerHTML = '<option value="">Select company…</option>' + companies.map((c) =>
+        `<option value="${c.id}">${c.company_name}</option>`
+      ).join('');
+    }
+
+    function companyName(id) {
+      const c = companies.find((x) => x.id === id);
+      return c ? c.company_name : '-';
+    }
+
+    function renderUsers(list) {
+      const tbody = document.querySelector('#users-table tbody');
+      if (!list.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${isOwner ? 5 : 4}" class="py-12 text-center">
+              <p class="text-sm text-slate-500">No users found</p>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((u) => {
+        const initials = `${(u.name || 'U')[0]}${(u.surname || '')[0] || ''}`.toUpperCase();
+        const statusClass = u.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        const statusLabel = u.is_active ? 'Active' : 'Inactive';
+        return `
+          <tr class="border-b border-slate-700/20 hover:bg-slate-800/40 transition-colors">
+            <td class="py-4 px-5">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center text-xs font-semibold text-blue-300 border border-blue-500/20">
+                  ${initials}
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-200">${u.name} ${u.surname}</p>
+                  <p class="text-xs text-slate-500">${u.email}</p>
+                </div>
+              </div>
+            </td>
+            <td class="py-4 px-5">
+              <span class="badge-premium bg-slate-700/30 text-slate-300 border-slate-600/30">${roleLabels[u.role] || u.role}</span>
+            </td>
+            ${isOwner ? `<td class="py-4 px-5 text-sm text-slate-400">${companyName(u.company_id) || '-'}</td>` : ''}
+            <td class="py-4 px-5">
+              <span class="badge-premium ${statusClass}">${statusLabel}</span>
+            </td>
+            <td class="py-4 px-5 text-sm text-slate-500">${Utils.formatDate(u.created_at)}</td>
+          </tr>`;
+      }).join('');
+      Layout.refreshIcons();
+    }
+
+    async function loadUsers(search = '') {
+      try {
+        const params = search ? `?search=${encodeURIComponent(search)}` : '';
+        users = await API.get(`/users/${params}`);
+        renderUsers(users);
+      } catch (err) {
+        document.querySelector('#users-table tbody').innerHTML = `
+          <tr>
+            <td colspan="${isOwner ? 5 : 4}" class="py-12 text-center text-sm text-red-400">${err.message || 'Failed to load users'}</td>
+          </tr>`;
+      }
+    }
+
+    window.openAddModal = function () {
+      const modal = document.getElementById('add-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      Layout.refreshIcons();
+    };
+
+    window.closeAddModal = function () {
+      const modal = document.getElementById('add-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    document.getElementById('search').addEventListener('input', Utils.debounce((e) => loadUsers(e.target.value)));
+
+    document.getElementById('add-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const body = {
+        name: fd.get('name'),
+        surname: fd.get('surname'),
+        email: fd.get('email'),
+        password: fd.get('password'),
+        role: isOwner ? fd.get('role') : 'employee',
+      };
+      if (isOwner) {
+        const companyId = fd.get('company_id');
+        if (!companyId) {
+          Layout.showToast('Please select a company', 'error');
+          return;
+        }
+        body.company_id = Number(companyId);
+      }
+
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      try {
+        await API.post('/users/', body);
+        Layout.showToast('Account created successfully', 'success');
+        closeAddModal();
+        e.target.reset();
+        loadUsers();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to create account', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadCompanies().then(() => loadUsers());
+  })();
+</script>
+{% endblock %}

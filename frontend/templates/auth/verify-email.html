@@ -1,42 +1,11 @@
 {% extends "auth_base.html" %}
-{% block title %}Verify Email - JSE Analytics{% endblock %}
+{% block title %}Sign In - JSE Analytics{% endblock %}
 {% block content %}
-<h2 class="text-xl font-semibold text-white text-center mb-1">Verify your email</h2>
-<p class="text-sm text-slate-500 text-center mb-6">Enter the verification token from your email</p>
-
-<form id="verify-form" class="space-y-5">
-  <div>
-    <label class="block text-sm font-medium text-slate-400 mb-2">Verification token</label>
-    <div class="input-group">
-      <i data-lucide="mail-check" class="input-icon w-4 h-4"></i>
-      <input type="text" name="token" id="token" class="input-premium" required placeholder="Paste token from email">
-    </div>
-  </div>
-  <button type="submit" id="verify-btn" class="btn-premium btn-primary-glow">
-    <i data-lucide="check-circle" class="w-4 h-4"></i>
-    <span>Verify Email</span>
-  </button>
-</form>
-
-<p class="text-center text-sm text-slate-500 mt-6"><a href="/auth/login.html" class="link-premium">Back to login</a></p>
+<div class="text-center py-8">
+  <p class="text-slate-400 text-sm mb-4">Email verification is no longer required. Sign in with credentials provided by your administrator.</p>
+  <a href="/auth/login.html" class="link-premium">Go to Sign In</a>
+</div>
 {% endblock %}
 {% block scripts %}
-<script>
-  document.getElementById('verify-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    if (!AuthUI.validateForm(form)) return;
-    const btn = document.getElementById('verify-btn');
-    AuthUI.setButtonLoading(btn, true);
-    try {
-      await API.post('/auth/verify-email', { token: form.token.value.trim() });
-      AuthUI.showToast('Email verified! You can now sign in.', 'success');
-      setTimeout(() => location.href = '/auth/login.html', 2000);
-    } catch (err) {
-      AuthUI.showToast(err.message, 'error');
-    } finally {
-      AuthUI.setButtonLoading(btn, false);
-    }
-  });
-</script>
+<script>window.location.replace('/auth/login.html');</script>
 {% endblock %}

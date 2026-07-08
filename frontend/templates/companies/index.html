@@ -65,55 +65,10 @@
     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
     <input type="search" id="search" class="search-premium pl-10" placeholder="Search companies by name, registration...">
   </div>
-  <button id="add-btn" class="btn-premium btn-primary-glow hidden" onclick="document.getElementById('add-modal').classList.remove('hidden')">
+  <button id="add-btn" class="btn-premium btn-primary-glow hidden" type="button" onclick="openAddCompanyModal()">
     <i data-lucide="plus" class="w-4 h-4"></i>
     <span>Add Company</span>
   </button>
-</div>
-
-<!-- Add Company Modal -->
-<div id="add-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-  <div class="absolute inset-0 bg-black/60" onclick="document.getElementById('add-modal').classList.add('hidden')"></div>
-  <div class="relative bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-auto transform scale-95 opacity-0 transition-all duration-300" id="add-modal-content">
-    <div class="p-6 border-b border-slate-700/30 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
-          <i data-lucide="building-2" class="w-5 h-5 text-blue-400"></i>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-100">Register Company</h3>
-          <p class="text-xs text-slate-500">Add a new company to the platform</p>
-        </div>
-      </div>
-      <button onclick="document.getElementById('add-modal').classList.add('hidden')" class="p-2 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-    </div>
-    <form id="add-form" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Company Name *</label>
-        <input name="company_name" class="search-premium" placeholder="e.g. Acme Corporation" required>
-      </div>
-      <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Registration Number *</label>
-        <input name="registration_number" class="search-premium" placeholder="e.g. 2010/123456/07" required>
-      </div>
-      <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Website</label>
-        <input name="website" class="search-premium" placeholder="https://example.com">
-      </div>
-      <div class="space-y-1.5">
-        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Industry</label>
-        <input name="industry" class="search-premium" placeholder="e.g. Technology, Finance">
-      </div>
-      <div class="md:col-span-2 pt-2">
-        <button type="submit" class="btn-premium btn-primary-glow w-full py-3">
-          <i data-lucide="check" class="w-4 h-4"></i>
-          <span>Create Company</span>
-        </button>
-      </div>
-    </form>
-  </div>
 </div>
 
 <!-- Companies Table -->
@@ -199,7 +154,108 @@
   if (!Auth.guardPage(['platform_owner'])) return;
   Layout.init();
   Layout.setBreadcrumbs([{ label: 'Companies', href: '/companies/index.html' }, { label: 'Directory' }]);
-  if (Auth.hasPermission('create_company')) document.getElementById('add-btn').classList.remove('hidden');
+  if (Auth.canAccess(['platform_owner'])) document.getElementById('add-btn').classList.remove('hidden');
+
+  function addCompanyFormHtml() {
+    return `
+      <div class="p-6 border-b border-slate-700/30 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
+            <i data-lucide="building-2" class="w-5 h-5 text-blue-400"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-slate-100">Add Company</h3>
+            <p class="text-xs text-slate-500">Create a company and its administrator</p>
+          </div>
+        </div>
+        <button type="button" onclick="Layout.closeModal()" class="p-2 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="add-form" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Company Name *</label>
+          <input name="company_name" class="search-premium" placeholder="e.g. Acme Corporation" required>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Registration Number *</label>
+          <input name="registration_number" class="search-premium" placeholder="e.g. 2010/123456/07" required>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Website</label>
+          <input name="website" class="search-premium" placeholder="https://example.com">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Industry</label>
+          <input name="industry" class="search-premium" placeholder="e.g. Technology, Finance">
+        </div>
+        <div class="md:col-span-2 pt-2 border-t border-slate-700/30">
+          <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">Company Administrator</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-xs text-slate-500">First Name *</label>
+              <input name="admin_name" class="search-premium" placeholder="Admin first name" required>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs text-slate-500">Last Name *</label>
+              <input name="admin_surname" class="search-premium" placeholder="Admin last name" required>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs text-slate-500">Admin Email *</label>
+              <input name="admin_email" type="email" class="search-premium" placeholder="admin@company.co.za" required>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs text-slate-500">Temporary Password *</label>
+              <input name="admin_password" type="password" class="search-premium" placeholder="Min. 8 characters" minlength="8" required>
+            </div>
+          </div>
+        </div>
+        <div class="md:col-span-2 pt-2">
+          <button type="submit" class="btn-premium btn-primary-glow w-full py-3" id="add-form-submit">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Create Company</span>
+          </button>
+        </div>
+      </form>`;
+  }
+
+  async function submitAddCompany(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('add-form-submit');
+    if (!submitBtn) return;
+
+    const originalContent = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span>Creating...</span>';
+    submitBtn.disabled = true;
+
+    try {
+      const body = Object.fromEntries(new FormData(form).entries());
+      ['website', 'industry'].forEach((key) => {
+        if (!body[key] || !String(body[key]).trim()) delete body[key];
+      });
+      await API.post('/companies/', body);
+      Layout.showToast('Company created successfully', 'success');
+      Layout.closeModal();
+      loadCompanies();
+    } catch (err) {
+      Layout.showToast(err.message || 'Failed to create company', 'error');
+    } finally {
+      submitBtn.innerHTML = originalContent;
+      submitBtn.disabled = false;
+      Layout.refreshIcons(document.getElementById('modal-content'));
+    }
+  }
+
+  window.openAddCompanyModal = function () {
+    Layout.openModal(addCompanyFormHtml(), { size: 'xl' });
+    const form = document.getElementById('add-form');
+    if (form) form.addEventListener('submit', submitAddCompany, { once: true });
+  };
+
+  window.closeAddCompanyModal = function () {
+    Layout.closeModal();
+  };
 
   async function loadCompanies(search = '') {
     try {
@@ -281,7 +337,7 @@
           </tr>`;
         }).join('');
       }
-      Layout.refreshIcons();
+      Layout.refreshIcons(document.getElementById('companies-table'));
     } catch (err) {
       document.querySelector('#companies-table tbody').innerHTML = `
         <tr>
@@ -300,72 +356,13 @@
           </td>
         </tr>
       `;
-      Layout.refreshIcons();
+      Layout.refreshIcons(document.getElementById('companies-table'));
     }
   }
 
   window.loadCompanies = loadCompanies;
 
-  // Search with debounce
   document.getElementById('search').addEventListener('input', Utils.debounce(e => loadCompanies(e.target.value)));
-
-  // Add company form
-  document.getElementById('add-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalContent = submitBtn.innerHTML;
-    submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Creating...</span>`;
-    submitBtn.disabled = true;
-    Layout.refreshIcons();
-
-    try {
-      const body = Object.fromEntries(new FormData(e.target).entries());
-      await API.post('/companies/', body);
-
-      // Show success toast
-      if (typeof Layout.showToast === 'function') {
-        Layout.showToast('Company created successfully', 'success');
-      }
-
-      document.getElementById('add-modal').classList.add('hidden');
-      e.target.reset();
-      loadCompanies();
-    } catch (err) {
-      if (typeof Layout.showToast === 'function') {
-        Layout.showToast(err.message || 'Failed to create company', 'error');
-      }
-    } finally {
-      submitBtn.innerHTML = originalContent;
-      submitBtn.disabled = false;
-      Layout.refreshIcons();
-    }
-  });
-
-  // Modal animation
-  const addModal = document.getElementById('add-modal');
-  const modalContent = document.getElementById('add-modal-content');
-
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        if (!addModal.classList.contains('hidden')) {
-          addModal.classList.add('flex');
-          setTimeout(() => {
-            modalContent.classList.remove('scale-95', 'opacity-0');
-            modalContent.classList.add('scale-100', 'opacity-100');
-          }, 10);
-          Layout.refreshIcons();
-        } else {
-          modalContent.classList.remove('scale-100', 'opacity-100');
-          modalContent.classList.add('scale-95', 'opacity-0');
-          setTimeout(() => {
-            addModal.classList.remove('flex');
-          }, 300);
-        }
-      }
-    });
-  });
-  observer.observe(addModal, { attributes: true });
 
   loadCompanies();
   })();

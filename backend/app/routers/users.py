@@ -89,10 +89,12 @@ def create_user(
 ):
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already exists")
+    if data.role == UserRole.platform_owner:
+        raise HTTPException(status_code=403, detail="Cannot create platform owner accounts")
     if current_user.role == UserRole.company_admin:
         data.company_id = current_user.company_id
-        if data.role == UserRole.platform_owner:
-            raise HTTPException(status_code=403, detail="Cannot create platform owner")
+        if data.role != UserRole.employee:
+            raise HTTPException(status_code=403, detail="Company admins can only add employees")
     user = User(
         email=data.email,
         password_hash=hash_password(data.password),

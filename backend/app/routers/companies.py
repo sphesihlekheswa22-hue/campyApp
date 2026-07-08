@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.auth.security import get_current_user, require_roles
+from app.auth.security import get_current_user, hash_password, require_roles
 from app.config import get_settings
 from app.database.session import get_db
 from app.models import AnnualReport, Company, SubscriptionStatus, User, UserRole
@@ -80,8 +80,26 @@ def create_company(
 ):
     if db.query(Company).filter(Company.registration_number == data.registration_number).first():
         raise HTTPException(status_code=400, detail="Registration number already exists")
-    company = Company(**data.model_dump())
+    if data.admin_email and db.query(User).filter(User.email == data.admin_email).first():
+        raise HTTPException(status_code=400, detail="Admin email already exists")
+
+    company_data = data.model_dump(exclude={"admin_email", "admin_password", "admin_name", "admin_surname"})
+    company = Company(**company_data)
     db.add(company)
+    db.flush()
+
+    if data.admin_email:
+        admin = User(
+            email=data.admin_email,
+            password_hash=hash_password(data.admin_password),
+            name=data.admin_name,
+            surname=data.admin_surname,
+            role=UserRole.company_admin,
+            company_id=company.id,
+            is_active=True,
+        )
+        db.add(admin)
+
     db.commit()
     db.refresh(company)
     log_audit(db, current_user.id, "create_company", f"company:{company.id}", request.client.host if request.client else None)

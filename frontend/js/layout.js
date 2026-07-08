@@ -3,6 +3,7 @@ const Layout = {
     platform_owner: [
       { href: '/dashboard/admin.html', label: 'Dashboard', icon: 'layout-dashboard' },
       { href: '/companies/index.html', label: 'Companies', icon: 'building-2' },
+      { href: '/team/index.html', label: 'Users', icon: 'users' },
       { href: '/reports/index.html', label: 'Reports', icon: 'file-text' },
       { href: '/analytics/index.html', label: 'Analytics', icon: 'trending-up' },
       { href: '/governance/index.html', label: 'Governance', icon: 'shield' },
@@ -12,6 +13,7 @@ const Layout = {
     company_admin: [
       { href: '/dashboard/company-admin.html', label: 'Dashboard', icon: 'layout-dashboard' },
       { href: '/companies/detail.html', label: 'My Company', icon: 'building-2', dynamic: 'company', tooltip: 'Your company profile' },
+      { href: '/team/index.html', label: 'Team', icon: 'users' },
       { href: '/reports/index.html', label: 'Reports', icon: 'file-text' },
       { href: '/analytics/index.html', label: 'Analytics', icon: 'trending-up' },
       { href: '/governance/index.html', label: 'Governance', icon: 'shield' },
@@ -29,11 +31,11 @@ const Layout = {
 
   _iconRefreshScheduled: false,
 
-  refreshIcons() {
+  refreshIcons(root) {
     if (typeof lucide === 'undefined' || this._iconRefreshScheduled) return;
     this._iconRefreshScheduled = true;
     requestAnimationFrame(() => {
-      lucide.createIcons();
+      lucide.createIcons(root ? { root } : undefined);
       this._iconRefreshScheduled = false;
     });
   },
@@ -160,21 +162,18 @@ const Layout = {
     }, 4000);
   },
 
-  openModal(content) {
+  openModal(content, options = {}) {
     const container = document.getElementById('modal-container');
     const contentDiv = document.getElementById('modal-content');
     if (!container || !contentDiv) return;
 
+    contentDiv.className = `relative bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-auto ${options.size === 'xl' ? 'max-w-xl' : 'max-w-lg'}`;
     contentDiv.innerHTML = content;
     container.classList.remove('hidden');
     container.classList.add('flex');
+    document.body.style.overflow = 'hidden';
 
-    requestAnimationFrame(() => {
-      contentDiv.classList.remove('scale-95', 'opacity-0');
-      contentDiv.classList.add('scale-100', 'opacity-100');
-    });
-
-    this.refreshIcons();
+    this.refreshIcons(contentDiv);
   },
 
   closeModal() {
@@ -182,13 +181,10 @@ const Layout = {
     const contentDiv = document.getElementById('modal-content');
     if (!container || !contentDiv) return;
 
-    contentDiv.classList.remove('scale-100', 'opacity-100');
-    contentDiv.classList.add('scale-95', 'opacity-0');
-
-    setTimeout(() => {
-      container.classList.add('hidden');
-      container.classList.remove('flex');
-    }, 300);
+    container.classList.add('hidden');
+    container.classList.remove('flex');
+    contentDiv.innerHTML = '';
+    document.body.style.overflow = '';
   },
 
   openNotifications() {
@@ -250,7 +246,7 @@ document.addEventListener('keydown', (e) => {
     const searchInput = document.getElementById('global-search') || document.getElementById('sidebar-search');
     if (searchInput) searchInput.focus();
   }
-  if (e.key === 'Escape') {
+    if (e.key === 'Escape') {
     Layout.closeModal();
     const sidebar = document.getElementById('sidebar');
     if (sidebar?.classList.contains('mobile-open')) Layout.toggleMobile();
