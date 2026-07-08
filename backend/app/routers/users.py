@@ -61,6 +61,7 @@ def list_users(
     search: Optional[str] = Query(None),
     role: Optional[UserRole] = Query(None),
     company_id: Optional[int] = Query(None),
+    is_active: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -70,14 +71,19 @@ def list_users(
     elif current_user.role == UserRole.employee:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     if search:
+        term = f"%{search.strip()}%"
         query = query.filter(
-            (User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
+            (User.name.ilike(term))
+            | (User.surname.ilike(term))
+            | (User.email.ilike(term))
         )
     if role:
         query = query.filter(User.role == role)
     if company_id and current_user.role == UserRole.platform_owner:
         query = query.filter(User.company_id == company_id)
-    return query.all()
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+    return query.order_by(User.created_at.desc()).all()
 
 
 @router.post("/", response_model=UserResponse)

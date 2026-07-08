@@ -66,6 +66,17 @@ const Utils = {
   getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   },
+
+  buildQuery(params = {}) {
+    const sp = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && String(value).trim() !== '') {
+        sp.set(key, String(value).trim());
+      }
+    });
+    const query = sp.toString();
+    return query ? `?${query}` : '';
+  },
 };
 
 window.Utils = Utils;

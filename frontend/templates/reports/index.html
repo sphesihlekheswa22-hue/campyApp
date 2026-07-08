@@ -76,10 +76,16 @@
 </div>
 
 <!-- Filters -->
-<div class="flex flex-col sm:flex-row gap-3 mb-6">
+<div class="flex flex-col sm:flex-row flex-wrap gap-3 mb-6">
   <div class="relative w-full sm:w-72">
     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
     <input type="search" id="search" class="search-premium pl-10" placeholder="Search by company or filename…">
+  </div>
+  <div class="relative w-full sm:w-52 hidden" id="company-filter-wrap">
+    <i data-lucide="building-2" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    <select id="company-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+      <option value="">All companies</option>
+    </select>
   </div>
   <div class="relative w-full sm:w-48">
     <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
@@ -91,6 +97,7 @@
       <option value="failed">Failed</option>
     </select>
   </div>
+  <button type="button" id="clear-filters" class="btn-premium btn-secondary-glass px-4 text-sm whitespace-nowrap">Clear filters</button>
   <button class="btn-premium btn-secondary-glass p-2.5 sm:ml-auto" onclick="load()" title="Refresh">
     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
   </button>
@@ -141,12 +148,22 @@
 
     let allReports = [];
     let companyMap = {};
+    const isOwner = Auth.canAccess(['platform_owner']);
+
+    if (isOwner) {
+      document.getElementById('company-filter-wrap').classList.remove('hidden');
+    }
 
     async function load() {
       const tbody = document.getElementById('reports-body');
       try {
+        const companyId = isOwner ? document.getElementById('company-filter').value : '';
+        const reportQuery = Utils.buildQuery({
+          company_id: companyId,
+          status: document.getElementById('status-filter').value,
+        });
         const [reports, companies] = await Promise.all([
-          API.get('/reports/'),
+          API.get(`/reports/${reportQuery}`),
           API.get('/companies/'),
         ]);
         allReports = reports;
@@ -156,6 +173,13 @@
           document.getElementById('company-select').innerHTML = companies.map(c =>
             `<option value="${c.id}">${c.company_name}</option>`
           ).join('');
+        }
+        if (isOwner) {
+          const current = document.getElementById('company-filter').value;
+          document.getElementById('company-filter').innerHTML =
+            '<option value="">All companies</option>' +
+            companies.map((c) => `<option value="${c.id}">${c.company_name}</option>`).join('');
+          if (current) document.getElementById('company-filter').value = current;
         }
 
         document.getElementById('stat-total').textContent = reports.length;
@@ -173,11 +197,9 @@
 
     function renderTable() {
       const search = document.getElementById('search').value.toLowerCase();
-      const status = document.getElementById('status-filter').value;
       const tbody = document.getElementById('reports-body');
 
       let filtered = allReports;
-      if (status) filtered = filtered.filter(r => r.status === status);
       if (search) {
         filtered = filtered.filter(r => {
           const name = companyMap[r.company_id] || '';
@@ -258,7 +280,14 @@
     window.downloadReport = downloadReport;
 
     document.getElementById('search').addEventListener('input', Utils.debounce(renderTable, 300));
-    document.getElementById('status-filter').addEventListener('change', renderTable);
+    document.getElementById('status-filter').addEventListener('change', load);
+    document.getElementById('company-filter')?.addEventListener('change', load);
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      document.getElementById('status-filter').value = '';
+      if (isOwner) document.getElementById('company-filter').value = '';
+      load();
+    });
 
     document.getElementById('upload-btn').addEventListener('click', async () => {
       const file = document.getElementById('file-input').files[0];

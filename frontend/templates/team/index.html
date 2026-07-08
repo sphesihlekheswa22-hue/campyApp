@@ -3,15 +3,44 @@
 {% block page_title %}<span id="layout-page-title">Team</span>{% endblock %}
 
 {% block content %}
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-  <div class="relative w-full sm:w-80">
-    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
-    <input type="search" id="search" class="search-premium pl-10" placeholder="Search by name or email…">
+<!-- Search & Actions Bar -->
+<div class="flex flex-col gap-3 mb-6">
+  <div class="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+    <div class="flex flex-col sm:flex-row flex-wrap gap-3 flex-1">
+      <div class="relative w-full sm:w-64">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+        <input type="search" id="search" class="search-premium pl-10" placeholder="Search by name or email…">
+      </div>
+      <div class="relative w-full sm:w-44 hidden" id="role-filter-wrap">
+        <i data-lucide="shield" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+        <select id="role-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+          <option value="">All roles</option>
+          <option value="company_admin">Company Admin</option>
+          <option value="employee">Employee</option>
+        </select>
+      </div>
+      <div class="relative w-full sm:w-52 hidden" id="company-filter-wrap">
+        <i data-lucide="building-2" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+        <select id="company-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+          <option value="">All companies</option>
+        </select>
+      </div>
+      <div class="relative w-full sm:w-40">
+        <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+        <select id="status-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+          <option value="">All statuses</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+      <button type="button" id="clear-filters" class="btn-premium btn-secondary-glass px-4 text-sm whitespace-nowrap">Clear filters</button>
+    </div>
+    <button id="add-btn" class="btn-premium btn-primary-glow shrink-0" onclick="openAddModal()">
+      <i data-lucide="user-plus" class="w-4 h-4"></i>
+      <span id="add-btn-label">Add User</span>
+    </button>
   </div>
-  <button id="add-btn" class="btn-premium btn-primary-glow" onclick="openAddModal()">
-    <i data-lucide="user-plus" class="w-4 h-4"></i>
-    <span id="add-btn-label">Add User</span>
-  </button>
+  <p class="text-xs text-slate-500" id="filter-summary">Loading…</p>
 </div>
 
 <div class="card-premium overflow-hidden">
@@ -111,6 +140,8 @@
       document.getElementById('company-col').classList.remove('hidden');
       document.getElementById('role-field').classList.remove('hidden');
       document.getElementById('company-field').classList.remove('hidden');
+      document.getElementById('role-filter-wrap').classList.remove('hidden');
+      document.getElementById('company-filter-wrap').classList.remove('hidden');
     } else {
       document.getElementById('add-btn-label').textContent = 'Add Employee';
       document.getElementById('modal-title').textContent = 'Add Employee';
@@ -126,13 +157,24 @@
     let companies = [];
     let users = [];
 
+    function getFilters() {
+      const status = document.getElementById('status-filter').value;
+      return {
+        search: document.getElementById('search').value,
+        role: isOwner ? document.getElementById('role-filter').value : '',
+        company_id: isOwner ? document.getElementById('company-filter').value : '',
+        is_active: status === '' ? '' : status,
+      };
+    }
+
     async function loadCompanies() {
       if (!isOwner) return;
       companies = await API.get('/companies/');
-      const select = document.getElementById('company-select');
-      select.innerHTML = '<option value="">Select company…</option>' + companies.map((c) =>
-        `<option value="${c.id}">${c.company_name}</option>`
-      ).join('');
+      const addSelect = document.getElementById('company-select');
+      const filterSelect = document.getElementById('company-filter');
+      const options = companies.map((c) => `<option value="${c.id}">${c.company_name}</option>`).join('');
+      addSelect.innerHTML = '<option value="">Select company…</option>' + options;
+      filterSelect.innerHTML = '<option value="">All companies</option>' + options;
     }
 
     function companyName(id) {
@@ -182,12 +224,16 @@
       Layout.refreshIcons();
     }
 
-    async function loadUsers(search = '') {
+    async function loadUsers() {
+      const filters = getFilters();
+      const query = Utils.buildQuery(filters);
       try {
-        const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-        users = await API.get(`/users/${qs}`);
+        users = await API.get(`/users/${query}`);
         renderUsers(users);
+        document.getElementById('filter-summary').textContent =
+          `${users.length} user${users.length === 1 ? '' : 's'} found`;
       } catch (err) {
+        document.getElementById('filter-summary').textContent = 'Failed to load users';
         document.querySelector('#users-table tbody').innerHTML = `
           <tr>
             <td colspan="${isOwner ? 5 : 4}" class="py-12 text-center text-sm text-red-400">${err.message || 'Failed to load users'}</td>
@@ -208,7 +254,20 @@
       modal.classList.remove('flex');
     };
 
-    document.getElementById('search').addEventListener('input', Utils.debounce((e) => loadUsers(e.target.value)));
+    const applyFilters = Utils.debounce(() => loadUsers(), 300);
+    document.getElementById('search').addEventListener('input', applyFilters);
+    document.getElementById('role-filter')?.addEventListener('change', loadUsers);
+    document.getElementById('company-filter')?.addEventListener('change', loadUsers);
+    document.getElementById('status-filter').addEventListener('change', loadUsers);
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      if (isOwner) {
+        document.getElementById('role-filter').value = '';
+        document.getElementById('company-filter').value = '';
+      }
+      document.getElementById('status-filter').value = '';
+      loadUsers();
+    });
 
     document.getElementById('add-form').addEventListener('submit', async (e) => {
       e.preventDefault();

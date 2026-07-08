@@ -17,14 +17,17 @@
     </div>
     <div class="relative w-full sm:w-56">
       <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
-      <input
-        type="text"
-        id="action-filter"
-        class="search-premium pl-10"
-        placeholder="Filter by action..."
-        autocomplete="off"
-      >
+      <select id="action-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+        <option value="">All actions</option>
+        <option value="login">Login</option>
+        <option value="create_user">Create user</option>
+        <option value="create_company">Create company</option>
+        <option value="upload_report">Upload report</option>
+        <option value="update_profile">Update profile</option>
+        <option value="delete_user">Delete user</option>
+      </select>
     </div>
+    <button type="button" id="clear-filters" class="btn-premium btn-secondary-glass px-4 text-sm whitespace-nowrap">Clear filters</button>
   </div>
 
   <div class="flex items-center gap-3">
@@ -120,12 +123,10 @@
       { label: 'Audit Logs' }
     ]);
 
-    async function loadLogs(search = '', action = '') {
-      const params = new URLSearchParams();
-      if (search.trim()) params.set('search', search.trim());
-      if (action.trim()) params.set('action', action.trim());
-      const query = params.toString();
-      const url = query ? `/audit/?${query}` : '/audit/';
+    async function loadLogs() {
+      const search = document.getElementById('search').value;
+      const action = document.getElementById('action-filter').value;
+      const url = `/audit/${Utils.buildQuery({ search, action })}`;
 
       const tbody = document.getElementById('logs-body');
       const emptyState = document.getElementById('empty-state');
@@ -219,13 +220,13 @@
 
     window.loadLogs = loadLogs;
 
-    document.getElementById('search').addEventListener('input', Utils.debounce(e => {
-      loadLogs(e.target.value, document.getElementById('action-filter').value);
-    }, 300));
-
-    document.getElementById('action-filter').addEventListener('input', Utils.debounce(e => {
-      loadLogs(document.getElementById('search').value, e.target.value);
-    }, 300));
+    document.getElementById('search').addEventListener('input', Utils.debounce(() => loadLogs(), 300));
+    document.getElementById('action-filter').addEventListener('change', loadLogs);
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      document.getElementById('action-filter').value = '';
+      loadLogs();
+    });
 
     loadLogs();
   })();

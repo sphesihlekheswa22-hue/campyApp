@@ -60,15 +60,37 @@
 </div>
 
 <!-- Search & Actions Bar -->
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-  <div class="relative w-full sm:w-80">
-    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
-    <input type="search" id="search" class="search-premium pl-10" placeholder="Search companies by name, registration...">
+<div class="flex flex-col gap-3 mb-6">
+  <div class="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+    <div class="flex flex-col sm:flex-row flex-wrap gap-3 flex-1">
+      <div class="relative w-full sm:w-64">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+        <input type="search" id="search" class="search-premium pl-10" placeholder="Search companies by name, registration...">
+      </div>
+      <div class="relative w-full sm:w-44">
+        <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+        <select id="status-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="trial">Trial</option>
+          <option value="pending">Pending</option>
+          <option value="inactive">Inactive</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+      <div class="relative w-full sm:w-48">
+        <i data-lucide="briefcase" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+        <select id="industry-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+          <option value="">All industries</option>
+        </select>
+      </div>
+      <button type="button" id="clear-filters" class="btn-premium btn-secondary-glass px-4 text-sm whitespace-nowrap">Clear filters</button>
+    </div>
+    <button id="add-btn" class="btn-premium btn-primary-glow hidden shrink-0" type="button" onclick="openAddCompanyModal()">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      <span>Add Company</span>
+    </button>
   </div>
-  <button id="add-btn" class="btn-premium btn-primary-glow hidden" type="button" onclick="openAddCompanyModal()">
-    <i data-lucide="plus" class="w-4 h-4"></i>
-    <span>Add Company</span>
-  </button>
 </div>
 
 <!-- Companies Table -->
@@ -259,14 +281,43 @@
 
   let companiesLoading = false;
 
-  async function loadCompanies(search = '') {
+  function getCompanyFilters() {
+    return {
+      search: document.getElementById('search').value,
+      subscription_status: document.getElementById('status-filter').value,
+      industry: document.getElementById('industry-filter').value,
+    };
+  }
+
+  function updateIndustryOptions(companies) {
+    const industries = [...new Set(companies.map((c) => c.industry).filter(Boolean))].sort();
+    const select = document.getElementById('industry-filter');
+    const current = select.value;
+    const missing = current && !industries.includes(current);
+    if (missing) industries.push(current);
+    industries.sort();
+    select.innerHTML = '<option value="">All industries</option>' +
+      industries.map((i) => `<option value="${i}">${i}</option>`).join('');
+    if (current) select.value = current;
+  }
+
+  async function loadIndustryOptions() {
+    try {
+      const all = await API.get('/companies/');
+      updateIndustryOptions(all);
+    } catch (_) {}
+  }
+
+  async function loadCompanies() {
     if (companiesLoading) return;
     companiesLoading = true;
     const subtitle = document.getElementById('table-subtitle');
     if (subtitle) subtitle.textContent = 'Loading companies...';
 
+    const query = Utils.buildQuery(getCompanyFilters());
+
     try {
-      const companies = await API.get(`/companies/?search=${encodeURIComponent(search)}`);
+      const companies = await API.get(`/companies/${query}`);
 
       // Update stats
       document.getElementById('stat-total').textContent = companies.length;
@@ -372,9 +423,18 @@
 
   window.loadCompanies = loadCompanies;
 
-  document.getElementById('search').addEventListener('input', Utils.debounce(e => loadCompanies(e.target.value)));
+  const applyCompanyFilters = Utils.debounce(() => loadCompanies(), 300);
+  document.getElementById('search').addEventListener('input', applyCompanyFilters);
+  document.getElementById('status-filter').addEventListener('change', loadCompanies);
+  document.getElementById('industry-filter').addEventListener('change', loadCompanies);
+  document.getElementById('clear-filters').addEventListener('click', () => {
+    document.getElementById('search').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('industry-filter').value = '';
+    loadCompanies();
+  });
 
-  loadCompanies();
+  loadIndustryOptions().then(() => loadCompanies());
   })();
 </script>
 
