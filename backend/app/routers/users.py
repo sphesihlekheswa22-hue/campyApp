@@ -1,5 +1,7 @@
 import os
+import secrets
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
@@ -9,8 +11,10 @@ from app.auth.security import get_current_user, hash_password, require_roles
 from app.config import get_settings
 from app.database.session import get_db
 from app.models import User, UserRole
-from app.schemas import UserCreateRequest, UserResponse, UserUpdateRequest
+from app.schemas import PaginatedResponse, UserCreateRequest, UserResponse, UserUpdateRequest
 from app.services.audit_service import log_audit
+from app.services.email_service import send_invite_email
+from app.utils.pagination import paginate
 
 router = APIRouter(prefix="/users", tags=["users"])
 settings = get_settings()
@@ -56,12 +60,14 @@ async def upload_photo(
     return {"profile_photo": current_user.profile_photo}
 
 
-@router.get("/", response_model=list[UserResponse])
+@router.get("/", response_model=PaginatedResponse[UserResponse])
 def list_users(
     search: Optional[str] = Query(None),
     role: Optional[UserRole] = Query(None),
     company_id: Optional[int] = Query(None),
     is_active: Optional[bool] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -83,7 +89,9 @@ def list_users(
         query = query.filter(User.company_id == company_id)
     if is_active is not None:
         query = query.filter(User.is_active == is_active)
-    return query.order_by(User.created_at.desc()).all()
+    query = query.order_by(User.created_at.desc())
+    items, total, limit, offset = paginate(query, limit, offset)
+    return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=UserResponse)
@@ -101,19 +109,24 @@ def create_user(
         data.company_id = current_user.company_id
         if data.role != UserRole.employee:
             raise HTTPException(status_code=403, detail="Company admins can only add employees")
+    temp_password = data.password or secrets.token_urlsafe(10)
     user = User(
         email=data.email,
-        password_hash=hash_password(data.password),
+        password_hash=hash_password(temp_password),
         name=data.name,
         surname=data.surname,
         role=data.role,
         company_id=data.company_id,
         phone_number=data.phone_number,
         is_active=True,
+        must_change_password=True,
+        invited_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+    if data.send_invite_email:
+        send_invite_email(data.email, temp_password, data.name)
     log_audit(db, current_user.id, "create_user", f"user:{user.id}", request.client.host if request.client else None)
     return user
 

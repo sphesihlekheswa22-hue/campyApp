@@ -10,6 +10,16 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     upload_dir: str = "uploads"
+    app_url: str = "http://localhost:8000"
+
+    # Storage: local | s3 (works with Cloudflare R2 via custom endpoint)
+    storage_backend: str = "local"
+    s3_bucket: str = ""
+    s3_region: str = "auto"
+    s3_endpoint_url: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_user: str = ""
@@ -19,6 +29,19 @@ class Settings(BaseSettings):
     app_env: str = "development"
     platform_owner_email: str = "admin@bluemachines.com"
     platform_owner_password: str = "Admin123!"
+
+    # Optional AI / OCR
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    ocr_enabled: bool = False
+
+    # Health alert thresholds
+    alert_failed_extractions_threshold: int = 3
+    alert_pending_extractions_threshold: int = 10
+    alert_email: str = ""
+
+    # Job worker
+    job_poll_seconds: int = 15
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

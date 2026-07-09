@@ -67,7 +67,30 @@ def extract_text_from_pdf(file_path: str) -> str:
                     text_parts.append(page_text)
     except Exception as e:
         print(f"[EXTRACTION] pdfplumber error: {e}")
-    return "\n".join(text_parts)
+    text = "\n".join(text_parts)
+
+    if len(text.strip()) < 100:
+        ocr_text = extract_text_with_ocr(file_path)
+        if ocr_text:
+            text = ocr_text
+    return text
+
+
+def extract_text_with_ocr(file_path: str) -> str:
+    """OCR fallback for scanned PDFs — requires pdf2image + pytesseract if enabled."""
+    from app.config import get_settings
+    cfg = get_settings()
+    if not cfg.ocr_enabled:
+        return ""
+    try:
+        from pdf2image import convert_from_path
+        import pytesseract
+        images = convert_from_path(file_path, dpi=200, first_page=1, last_page=5)
+        parts = [pytesseract.image_to_string(img) for img in images]
+        return "\n".join(parts)
+    except Exception as e:
+        print(f"[EXTRACTION] OCR unavailable: {e}")
+        return ""
 
 
 def extract_tables_from_pdf(file_path: str) -> list[Any]:

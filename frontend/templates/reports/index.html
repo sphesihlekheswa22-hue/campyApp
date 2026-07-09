@@ -177,11 +177,11 @@
           API.get(`/reports/${reportQuery}`),
           API.get('/companies/'),
         ]);
-        allReports = reports;
-        companyMap = Object.fromEntries(companies.map(c => [c.id, c.company_name]));
+        allReports = Utils.unwrapList(reports);
+        companyMap = Object.fromEntries(Utils.unwrapList(companies).map(c => [c.id, c.company_name]));
 
         if (Auth.hasPermission('upload_reports')) {
-          document.getElementById('company-select').innerHTML = companies.map(c =>
+          document.getElementById('company-select').innerHTML = Utils.unwrapList(companies).map(c =>
             `<option value="${c.id}">${c.company_name}</option>`
           ).join('');
         }

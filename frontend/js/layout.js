@@ -88,6 +88,7 @@ const Layout = {
     }
 
     await this.loadUserProfile();
+    this.loadNotificationBadge();
 
     const sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
     const sidebar = document.getElementById('sidebar');
@@ -191,17 +192,60 @@ const Layout = {
     document.body.style.overflow = '';
   },
 
-  openNotifications() {
-    this.openModal(`
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-semibold text-slate-100">Notifications</h3>
-          <button type="button" onclick="Layout.closeModal()" class="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 transition-colors">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-        <p class="text-sm text-slate-400">No new notifications.</p>
-      </div>`);
+  async openNotifications() {
+    try {
+      const [list, count] = await Promise.all([
+        API.get('/notifications/?limit=20'),
+        API.get('/notifications/unread-count'),
+      ]);
+      const items = Utils.unwrapList(list);
+      const body = items.length ? items.map(n => `
+        <div class="p-4 rounded-xl border border-slate-700/40 bg-slate-800/40 mb-3 ${n.is_read ? 'opacity-70' : ''}">
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-sm font-medium text-slate-200">${n.title}</p>
+            <span class="text-xs text-slate-500 whitespace-nowrap">${Utils.timeAgo(n.created_at)}</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">${n.message}</p>
+        </div>`).join('') : '<p class="text-sm text-slate-400">No notifications yet.</p>';
+
+      this.openModal(`
+        <div class="p-6 max-w-lg">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-100">Notifications ${count.count ? `<span class="text-xs text-blue-400">(${count.count} unread)</span>` : ''}</h3>
+            <div class="flex gap-2">
+              ${count.count ? `<button type="button" class="text-xs text-blue-400 hover:text-blue-300" onclick="Layout.markAllNotificationsRead()">Mark all read</button>` : ''}
+              <button type="button" onclick="Layout.closeModal()" class="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+          <div class="max-h-96 overflow-y-auto">${body}</div>
+        </div>`);
+    } catch (err) {
+      this.openModal(`<div class="p-6"><p class="text-sm text-slate-400">${err.message || 'Failed to load notifications'}</p></div>`);
+    }
+  },
+
+  async markAllNotificationsRead() {
+    try {
+      await API.post('/notifications/read-all');
+      this.closeModal();
+      this.openNotifications();
+    } catch (err) {
+      this.showToast(err.message || 'Failed', 'error');
+    }
+  },
+
+  async loadNotificationBadge() {
+    if (!Auth.isLoggedIn()) return;
+    try {
+      const { count } = await API.get('/notifications/unread-count');
+      const badge = document.getElementById('notification-badge');
+      if (badge) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.toggle('hidden', !count);
+      }
+    } catch { /* optional */ }
   },
 
   openSettings() {

@@ -144,7 +144,7 @@
 
   async function init() {
     try {
-      companies = await API.get('/companies/');
+      companies = Utils.unwrapList(await API.get('/companies/'));
       const select = document.getElementById('company-select');
       select.innerHTML = '<option value="">Select a company...</option>' +
         companies.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('');

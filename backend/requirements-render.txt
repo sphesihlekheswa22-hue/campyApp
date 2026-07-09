@@ -21,3 +21,7 @@ joblib==1.4.2
 reportlab==4.2.5
 openpyxl==3.1.5
 Pillow==11.0.0
+boto3==1.35.76
+APScheduler==3.10.4
+httpx==0.28.1
+pytest==8.3.4

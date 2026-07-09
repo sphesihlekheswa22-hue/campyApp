@@ -194,11 +194,12 @@
         return;
       }
 
-      const [data, reports, company] = await Promise.all([
+      const [data, reportsRaw, company] = await Promise.all([
         API.get(`/analytics/company/${user.company_id}`),
         API.get('/reports/'),
         API.get(`/companies/${user.company_id}`),
       ]);
+      const reports = Utils.unwrapList(reportsRaw);
 
       // Update company info
       document.getElementById('company-name').textContent = company?.company_name || 'Your Company';

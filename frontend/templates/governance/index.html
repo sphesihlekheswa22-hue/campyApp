@@ -42,6 +42,23 @@
   </div>
 </div>
 
+<!-- Compliance Checklist -->
+<div class="card-premium p-6 mb-6" id="compliance-panel">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+        <i data-lucide="clipboard-check" class="w-4 h-4 text-emerald-400"></i>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-100">King IV / JSE Compliance</h3>
+        <p class="text-xs text-slate-500" id="compliance-summary">Loading checklist…</p>
+      </div>
+    </div>
+    <span class="text-2xl font-bold text-emerald-400" id="compliance-pct">-</span>
+  </div>
+  <div id="compliance-items" class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto"></div>
+</div>
+
 <!-- Filters -->
 <div class="flex flex-col sm:flex-row gap-3 mb-6">
   <div class="relative w-full sm:w-80">
@@ -195,7 +212,7 @@
     async function initGovernanceFilters() {
       if (isOwner) {
         try {
-          const companies = await API.get('/companies/');
+          const companies = Utils.unwrapList(await API.get('/companies/'));
           const sel = document.getElementById('company-filter');
           const current = sel.value;
           sel.innerHTML = '<option value="">All companies</option>' +
@@ -207,11 +224,30 @@
 
     document.getElementById('search').addEventListener('input', Utils.debounce(filterAndRender, 300));
     document.getElementById('category-filter').addEventListener('change', filterAndRender);
+    async function loadCompliance() {
+      try {
+        const companyId = isOwner ? document.getElementById('company-filter').value : '';
+        const q = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
+        const data = await API.get(`/governance/compliance${q}`);
+        document.getElementById('compliance-pct').textContent = (data.summary?.compliance_pct ?? 0) + '%';
+        document.getElementById('compliance-summary').textContent =
+          `${data.summary?.met ?? 0} met · ${data.summary?.partial ?? 0} partial · ${data.summary?.not_met ?? 0} gaps`;
+        const statusColor = { met: 'text-emerald-400', partial: 'text-amber-400', not_met: 'text-red-400' };
+        document.getElementById('compliance-items').innerHTML = (data.items || []).map(item => `
+          <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-800/30 text-xs">
+            <span class="text-slate-400 truncate">${item.framework}: ${item.principle}</span>
+            <span class="${statusColor[item.status] || 'text-slate-500'} font-medium">${item.status.replace('_', ' ')}</span>
+          </div>`).join('');
+      } catch {
+        document.getElementById('compliance-summary').textContent = 'Compliance data unavailable';
+      }
+    }
+
     document.getElementById('company-filter')?.addEventListener('change', () => {
-      loadCategories().then(loadNarratives);
+      loadCategories().then(() => { loadNarratives(); loadCompliance(); });
     });
 
-    initGovernanceFilters().then(() => loadCategories().then(loadNarratives));
+    initGovernanceFilters().then(() => loadCategories().then(() => { loadNarratives(); loadCompliance(); }));
   })();
 </script>
 {% endblock %}

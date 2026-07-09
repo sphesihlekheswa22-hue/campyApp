@@ -1,8 +1,9 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -37,6 +38,23 @@ class ReportStatus(str, enum.Enum):
     failed = "failed"
 
 
+class JobStatus(str, enum.Enum):
+    pending = "pending"
+    running = "running"
+    complete = "complete"
+    failed = "failed"
+
+
+class NotificationType(str, enum.Enum):
+    extraction_complete = "extraction_complete"
+    extraction_failed = "extraction_failed"
+    analytics_updated = "analytics_updated"
+    risk_changed = "risk_changed"
+    report_uploaded = "report_uploaded"
+    system_alert = "system_alert"
+    invite = "invite"
+
+
 class RegistrationType(str, enum.Enum):
     admin = "admin"
     company = "company"
@@ -52,6 +70,10 @@ class Company(Base):
     website: Mapped[str | None] = mapped_column(String(500), nullable=True)
     logo: Mapped[str | None] = mapped_column(String(500), nullable=True)
     industry: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    jse_code: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    sector: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    listing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
     subscription_status: Mapped[SubscriptionStatus] = mapped_column(
         Enum(SubscriptionStatus), default=SubscriptionStatus.trial
     )
@@ -76,6 +98,8 @@ class User(Base):
     profile_photo: Mapped[str | None] = mapped_column(String(500), nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -83,6 +107,39 @@ class User(Base):
 
     company: Mapped["Company | None"] = relationship("Company", back_populates="users")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="user")
+    notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    company_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True)
+    notification_type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="notifications")
+
+
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    job_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    status: Mapped[JobStatus] = mapped_column(Enum(JobStatus), default=JobStatus.pending, index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class AnnualReport(Base):
@@ -192,4 +249,5 @@ class ScheduledReport(Base):
     report_type: Mapped[str] = mapped_column(String(50), nullable=False)
     frequency: Mapped[str] = mapped_column(String(50), default="monthly")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -7,6 +7,7 @@ from app.auth.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    get_current_user,
     hash_password,
     verify_password,
 )
@@ -16,6 +17,7 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
@@ -52,6 +54,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         refresh_token=refresh,
         role=user.role.value,
         user_id=user.id,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -68,6 +71,7 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
         refresh_token=create_refresh_token(user.id, user.role.value),
         role=user.role.value,
         user_id=user.id,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -100,6 +104,23 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.password_hash = hash_password(data.new_password)
+    user.must_change_password = False
     db.delete(reset)
     db.commit()
     return {"message": "Password reset successfully"}
+
+
+@router.post("/change-password")
+def change_password(
+    data: ChangePasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    current_user.password_hash = hash_password(data.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    log_audit(db, current_user.id, "change_password", f"user:{current_user.id}", request.client.host if request.client else None)
+    return {"message": "Password changed successfully"}

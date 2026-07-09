@@ -10,16 +10,16 @@ from app.extraction.extractors import (
     extract_tables_from_pdf,
     extract_text_from_pdf,
 )
-from app.models import AnnualReport, ExtractedFinancial, GovernanceNarrative, ReportStatus
+from app.extraction.llm_extractor import extract_governance_with_llm
+from app.models import AnnualReport, ExtractedFinancial, GovernanceNarrative, NotificationType, ReportStatus, UserRole
+from app.services.notification_service import notify_company_users
+from app.services.storage_service import storage
 
 settings = get_settings()
 
 
 def resolve_report_file_path(stored_path: str) -> str:
-    normalized = stored_path.replace("\\", "/")
-    if normalized.startswith("uploads/"):
-        normalized = normalized[len("uploads/"):]
-    return os.path.join(settings.upload_dir, normalized)
+    return storage.resolve_local_path(stored_path)
 
 
 def run_extraction(report_id: int, report_year: str | None = None) -> None:
@@ -32,12 +32,14 @@ def run_extraction(report_id: int, report_year: str | None = None) -> None:
         report.status = ReportStatus.processing
         db.commit()
 
-        file_path = resolve_report_file_path(report.file_path)
-        if not os.path.exists(file_path):
-            print(f"[EXTRACTION] File not found: {file_path}")
+        if not storage.exists(report.file_path):
+            print(f"[EXTRACTION] File not found: {report.file_path}")
             report.status = ReportStatus.failed
             db.commit()
+            _notify_extraction_result(db, report, success=False)
             return
+
+        file_path = resolve_report_file_path(report.file_path)
 
         db.query(ExtractedFinancial).filter(ExtractedFinancial.report_id == report_id).delete()
         db.query(GovernanceNarrative).filter(GovernanceNarrative.report_id == report_id).delete()
@@ -65,8 +67,16 @@ def run_extraction(report_id: int, report_year: str | None = None) -> None:
             ))
             financial_count += 1
 
+        governance_items = extract_governance_narratives(text)
+        llm_items = extract_governance_with_llm(text)
+        gov_seen = {g["category"] for g in governance_items}
+        for item in llm_items:
+            if item["category"] not in gov_seen:
+                governance_items.append(item)
+                gov_seen.add(item["category"])
+
         governance_count = 0
-        for gov in extract_governance_narratives(text):
+        for gov in governance_items:
             db.add(GovernanceNarrative(
                 report_id=report_id,
                 category=gov["category"],
@@ -87,27 +97,53 @@ def run_extraction(report_id: int, report_year: str | None = None) -> None:
             from app.analytics.engine import run_company_analytics
             run_company_analytics(report.company_id, user_id=None)
 
+        _notify_extraction_result(db, report, success=report.status == ReportStatus.complete)
+
     except Exception as e:
         print(f"[EXTRACTION ERROR] report {report_id}: {e}")
         report = db.query(AnnualReport).filter(AnnualReport.id == report_id).first()
         if report:
             report.status = ReportStatus.failed
             db.commit()
+            _notify_extraction_result(db, report, success=False, error=str(e))
     finally:
         db.close()
 
 
+def _notify_extraction_result(db, report, success: bool, error: str | None = None) -> None:
+    if success:
+        notify_company_users(
+            db,
+            report.company_id,
+            NotificationType.extraction_complete,
+            "Report extraction complete",
+            f"Report #{report.id} was extracted successfully. Analytics have been updated.",
+            entity_ref=f"report:{report.id}",
+            roles=[UserRole.company_admin, UserRole.employee],
+        )
+    else:
+        notify_company_users(
+            db,
+            report.company_id,
+            NotificationType.extraction_failed,
+            "Report extraction failed",
+            error or f"Report #{report.id} could not be extracted. Try re-uploading or use Retry.",
+            entity_ref=f"report:{report.id}",
+            roles=[UserRole.company_admin],
+        )
+
+
 def recover_pending_extractions() -> None:
-    """Re-queue reports stuck in pending/processing (e.g. after Render restart)."""
+    """Enqueue stuck reports via job queue."""
+    from app.services.job_service import enqueue_job
     db = SessionLocal()
     try:
         stuck = db.query(AnnualReport).filter(
             AnnualReport.status.in_([ReportStatus.pending, ReportStatus.processing])
         ).all()
         for report in stuck:
-            path = resolve_report_file_path(report.file_path)
-            if os.path.exists(path):
-                print(f"[EXTRACTION] Recovering report {report.id}")
-                run_extraction(report.id)
+            if storage.exists(report.file_path):
+                print(f"[EXTRACTION] Re-queuing report {report.id}")
+                enqueue_job(db, "extraction", {"report_id": report.id})
     finally:
         db.close()

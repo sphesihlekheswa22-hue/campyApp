@@ -97,6 +97,23 @@
       </div>
     </div>
 
+    <div class="card-premium p-6" id="scheduled-reports-card">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="mail" class="w-5 h-5 text-blue-400"></i>
+        </div>
+        <div class="flex-1">
+          <h3 class="font-semibold text-slate-100">Scheduled Email Reports</h3>
+          <p class="text-sm text-slate-500 mt-1 mb-4">Receive a monthly analytics summary by email.</p>
+          <button type="button" class="btn-premium btn-primary-glow text-sm" id="enable-monthly-btn" onclick="enableMonthlyReport()">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+            <span>Enable monthly summary</span>
+          </button>
+          <p class="text-xs text-slate-600 mt-2" id="schedule-status"></p>
+        </div>
+      </div>
+    </div>
+
     <div class="card-premium p-6">
       <div class="flex items-start gap-3">
         <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -186,7 +203,37 @@
     }
 
     window.uploadPhoto = uploadPhoto;
+    async function loadSchedules() {
+      if (!Auth.canAccess(['company_admin', 'platform_owner'])) {
+        document.getElementById('scheduled-reports-card')?.classList.add('hidden');
+        return;
+      }
+      try {
+        const schedules = await API.get('/scheduled-reports/');
+        const active = (schedules || []).filter(s => s.is_active);
+        document.getElementById('schedule-status').textContent = active.length
+          ? `Active: ${active.map(s => s.frequency).join(', ')}`
+          : 'No active schedules';
+      } catch { /* optional */ }
+    }
+
+    window.enableMonthlyReport = async function () {
+      try {
+        const user = await API.get('/users/me');
+        if (!user.company_id) {
+          Layout.showToast('No company assigned', 'warning');
+          return;
+        }
+        await API.post('/scheduled-reports/', { company_id: user.company_id, frequency: 'monthly' });
+        Layout.showToast('Monthly email report enabled', 'success');
+        loadSchedules();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to enable schedule', 'error');
+      }
+    };
+
     loadProfile();
+    loadSchedules();
   })();
 </script>
 {% endblock %}

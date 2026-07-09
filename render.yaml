@@ -1,5 +1,4 @@
 # Render Blueprint — JSE Analytics Platform
-# Connect this repo on https://dashboard.render.com/blueprints
 
 services:
   - type: web
@@ -20,10 +19,24 @@ services:
         generateValue: true
       - key: DATABASE_URL
         sync: false
+      - key: APP_URL
+        sync: false
       - key: PLATFORM_OWNER_EMAIL
         value: admin@bluemachines.com
       - key: PLATFORM_OWNER_PASSWORD
         sync: false
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
       - key: SMTP_HOST
         value: ""
       - key: SMTP_PORT
@@ -35,4 +48,8 @@ services:
       - key: SMTP_FROM
         value: noreply@jse-analytics.com
       - key: BREVO_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALERT_EMAIL
         sync: false

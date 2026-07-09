@@ -303,7 +303,7 @@
 
   async function loadIndustryOptions() {
     try {
-      const all = await API.get('/companies/');
+      const all = Utils.unwrapList(await API.get('/companies/'));
       updateIndustryOptions(all);
     } catch (_) {}
   }

@@ -116,12 +116,31 @@ def send_verification_email(email: str, token: str) -> None:
 
 
 def send_password_reset_email(email: str, token: str) -> None:
+    reset_url = f"{settings.app_url}/auth/reset-password.html?token={token}"
     body = (
         f"You requested a password reset.\n\n"
-        f"Reset token: {token}\n\n"
-        f"This token expires in 1 hour."
+        f"Open this link to reset your password:\n{reset_url}\n\n"
+        f"Or use this token on the reset page: {token}\n\n"
+        f"This link expires in 1 hour."
     )
     send_email(email, "JSE Analytics - Password Reset", body)
+
+
+def send_invite_email(email: str, temp_password: str, name: str) -> None:
+    login_url = f"{settings.app_url}/auth/login.html"
+    body = (
+        f"Hello {name},\n\n"
+        f"You have been invited to JSE Analytics Platform.\n\n"
+        f"Login: {login_url}\n"
+        f"Email: {email}\n"
+        f"Temporary password: {temp_password}\n\n"
+        f"You will be asked to change your password on first login."
+    )
+    send_email(email, "JSE Analytics - Account Invitation", body)
+
+
+def send_monthly_report_email(email: str, company_name: str, summary: str) -> None:
+    send_email(email, f"JSE Analytics — {company_name} Summary", summary)
 
 
 def pin_expiry() -> datetime:

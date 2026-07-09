@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -9,9 +10,46 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
-from app.routers import auth, users, companies, reports, extractions, analytics, governance, audit
+from app.routers import (
+    auth, users, companies, reports, extractions, analytics, governance, audit,
+    notifications, scheduled_reports,
+)
 
 settings = get_settings()
+
+
+async def _background_worker():
+    from app.services.job_service import process_pending_jobs
+    while True:
+        try:
+            processed = process_pending_jobs(limit=5)
+            if processed:
+                print(f"[WORKER] Processed {processed} job(s)")
+        except Exception as e:
+            print(f"[WORKER ERROR] {e}")
+        await asyncio.sleep(settings.job_poll_seconds)
+
+
+def _enqueue_due_scheduled_reports():
+    from app.database.session import SessionLocal
+    from app.services.job_service import enqueue_job
+    from app.services.scheduled_report_service import due_schedules
+    db = SessionLocal()
+    try:
+        for schedule in due_schedules(db):
+            enqueue_job(db, "scheduled_report", {"schedule_id": schedule.id})
+    finally:
+        db.close()
+
+
+def _enqueue_health_check():
+    from app.database.session import SessionLocal
+    from app.services.job_service import enqueue_job
+    db = SessionLocal()
+    try:
+        enqueue_job(db, "health_check", {})
+    finally:
+        db.close()
 
 
 @asynccontextmanager
@@ -21,7 +59,25 @@ async def lifespan(app: FastAPI):
         recover_pending_extractions()
     except Exception as e:
         print(f"[STARTUP] Extraction recovery skipped: {e}")
+
+    worker_task = asyncio.create_task(_background_worker())
+
+    scheduler = None
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(_enqueue_due_scheduled_reports, "interval", hours=24, id="scheduled_reports")
+        scheduler.add_job(_enqueue_health_check, "interval", hours=6, id="health_check")
+        scheduler.start()
+        print("[STARTUP] Scheduler started")
+    except Exception as e:
+        print(f"[STARTUP] Scheduler skipped: {e}")
+
     yield
+
+    worker_task.cancel()
+    if scheduler:
+        scheduler.shutdown(wait=False)
 
 
 app = FastAPI(title="JSE Analytics Platform", version="1.0.0", lifespan=lifespan)
@@ -43,6 +99,8 @@ app.include_router(extractions.router, prefix=API_PREFIX)
 app.include_router(analytics.router, prefix=API_PREFIX)
 app.include_router(governance.router, prefix=API_PREFIX)
 app.include_router(audit.router, prefix=API_PREFIX)
+app.include_router(notifications.router, prefix=API_PREFIX)
+app.include_router(scheduled_reports.router, prefix=API_PREFIX)
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
@@ -57,7 +115,6 @@ templates = Jinja2Templates(
     auto_reload=settings.app_env == "development",
 )
 
-# Single redirect template for home and dashboard entry URLs
 REDIRECT_HOME_ALIASES = {
     "",
     "index.html",

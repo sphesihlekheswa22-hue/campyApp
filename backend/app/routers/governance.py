@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_user
 from app.database.session import get_db
 from app.models import AnnualReport, GovernanceNarrative, User, UserRole
-from app.schemas import GovernanceResponse
+from app.compliance.checklist import evaluate_compliance
+from app.schemas import ComplianceChecklistResponse, GovernanceResponse
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
@@ -29,6 +30,21 @@ def list_governance(
     if category:
         query = query.filter(GovernanceNarrative.category == category)
     return query.order_by(GovernanceNarrative.id.desc()).all()
+
+
+@router.get("/compliance", response_model=ComplianceChecklistResponse)
+def compliance_checklist(
+    company_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(GovernanceNarrative).join(AnnualReport)
+    if current_user.role != UserRole.platform_owner:
+        query = query.filter(AnnualReport.company_id == current_user.company_id)
+    elif company_id:
+        query = query.filter(AnnualReport.company_id == company_id)
+    narratives = query.all()
+    return evaluate_compliance(narratives)
 
 
 @router.get("/categories")

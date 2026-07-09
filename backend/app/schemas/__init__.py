@@ -1,9 +1,18 @@
-from datetime import datetime
-from typing import Optional
+from datetime import date, datetime
+from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from app.models import ReportStatus, SubscriptionStatus, UserRole
+from app.models import NotificationType, ReportStatus, SubscriptionStatus, UserRole
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    limit: int
+    offset: int
 
 
 class TokenResponse(BaseModel):
@@ -11,7 +20,7 @@ class TokenResponse(BaseModel):
     refresh_token: str
     role: str
     user_id: int
-
+    must_change_password: bool = False
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -65,6 +74,11 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(min_length=8)
@@ -86,6 +100,7 @@ class UserResponse(BaseModel):
     role: UserRole
     company_id: Optional[int] = None
     is_active: bool
+    must_change_password: bool = False
     created_at: datetime
 
     class Config:
@@ -101,12 +116,13 @@ class UserUpdateRequest(BaseModel):
 
 class UserCreateRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: Optional[str] = Field(default=None, min_length=8)
     name: str
     surname: str
     role: UserRole
     company_id: Optional[int] = None
     phone_number: Optional[str] = None
+    send_invite_email: bool = True
 
 
 class CompanyResponse(BaseModel):
@@ -116,6 +132,10 @@ class CompanyResponse(BaseModel):
     website: Optional[str] = None
     logo: Optional[str] = None
     industry: Optional[str] = None
+    jse_code: Optional[str] = None
+    sector: Optional[str] = None
+    listing_date: Optional[date] = None
+    market_cap: Optional[float] = None
     subscription_status: SubscriptionStatus
     created_at: datetime
 
@@ -132,6 +152,10 @@ class CompanyCreateRequest(BaseModel):
     registration_number: str
     website: Optional[str] = None
     industry: Optional[str] = None
+    jse_code: Optional[str] = None
+    sector: Optional[str] = None
+    listing_date: Optional[date] = None
+    market_cap: Optional[float] = None
     subscription_status: SubscriptionStatus = SubscriptionStatus.trial
     admin_email: Optional[EmailStr] = None
     admin_password: Optional[str] = Field(default=None, min_length=8)
@@ -150,7 +174,51 @@ class CompanyUpdateRequest(BaseModel):
     company_name: Optional[str] = None
     website: Optional[str] = None
     industry: Optional[str] = None
+    jse_code: Optional[str] = None
+    sector: Optional[str] = None
+    listing_date: Optional[date] = None
+    market_cap: Optional[float] = None
     subscription_status: Optional[SubscriptionStatus] = None
+
+
+class NotificationResponse(BaseModel):
+    id: int
+    notification_type: NotificationType
+    title: str
+    message: str
+    entity_ref: Optional[str] = None
+    company_id: Optional[int] = None
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ScheduledReportResponse(BaseModel):
+    id: int
+    company_id: int
+    user_id: int
+    report_type: str
+    frequency: str
+    is_active: bool
+    last_sent_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ScheduledReportCreateRequest(BaseModel):
+    company_id: int
+    report_type: str = "analytics_summary"
+    frequency: str = "monthly"
+
+
+class ComplianceChecklistResponse(BaseModel):
+    items: list[dict]
+    summary: dict
+    category_scores: dict
 
 
 class ReportResponse(BaseModel):
@@ -219,6 +287,8 @@ class SystemHealthResponse(BaseModel):
     total_reports: int
     pending_extractions: int
     failed_extractions: int = 0
+    pending_jobs: int = 0
+    alerts: list[str] = []
 
 
 class ReportExtractionSummary(BaseModel):

@@ -214,12 +214,13 @@
         return;
       }
 
-      const [companies, reports, analytics, company] = await Promise.all([
+      const [companiesRaw, reportsRaw, analytics, company] = await Promise.all([
         API.get('/companies/'),
         API.get('/reports/'),
         user.company_id ? API.get(`/analytics/company/${user.company_id}`) : Promise.resolve({}),
         user.company_id ? API.get(`/companies/${user.company_id}`) : Promise.resolve(null),
       ]);
+      const reports = Utils.unwrapList(reportsRaw);
       allReports = reports;
       document.getElementById('employee-name').textContent = user.name || user.email?.split('@')[0] || 'Employee';
       document.getElementById('employee-role').textContent = (user.role || 'employee').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());

@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
@@ -10,18 +11,22 @@ from app.auth.security import get_current_user, hash_password, require_roles
 from app.config import get_settings
 from app.database.session import get_db
 from app.models import AnnualReport, Company, SubscriptionStatus, User, UserRole
-from app.schemas import CompanyCreateRequest, CompanyListResponse, CompanyResponse, CompanyUpdateRequest
+from app.schemas import CompanyCreateRequest, CompanyListResponse, CompanyResponse, CompanyUpdateRequest, PaginatedResponse
+from app.utils.pagination import paginate
 from app.services.audit_service import log_audit
+from app.services.email_service import send_invite_email
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 settings = get_settings()
 
 
-@router.get("/", response_model=list[CompanyListResponse])
+@router.get("/", response_model=PaginatedResponse[CompanyListResponse])
 def list_companies(
     search: Optional[str] = Query(None),
     industry: Optional[str] = Query(None),
     subscription_status: Optional[SubscriptionStatus] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -44,9 +49,10 @@ def list_companies(
     if subscription_status:
         query = query.filter(Company.subscription_status == subscription_status)
 
-    companies = query.order_by(Company.company_name).all()
+    query = query.order_by(Company.company_name)
+    companies, total, limit, offset = paginate(query, limit, offset)
     if not companies:
-        return []
+        return PaginatedResponse(items=[], total=total, limit=limit, offset=offset)
 
     counts = dict(
         db.query(AnnualReport.company_id, func.count(AnnualReport.id))
@@ -55,7 +61,7 @@ def list_companies(
         .all()
     )
 
-    return [
+    items = [
         CompanyListResponse(
             id=c.id,
             company_name=c.company_name,
@@ -63,12 +69,17 @@ def list_companies(
             website=c.website,
             logo=c.logo,
             industry=c.industry,
+            jse_code=c.jse_code,
+            sector=c.sector,
+            listing_date=c.listing_date,
+            market_cap=c.market_cap,
             subscription_status=c.subscription_status,
             created_at=c.created_at,
             report_count=counts.get(c.id, 0),
         )
         for c in companies
     ]
+    return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=CompanyResponse)
@@ -97,8 +108,12 @@ def create_company(
             role=UserRole.company_admin,
             company_id=company.id,
             is_active=True,
+            must_change_password=True,
+            invited_at=datetime.now(timezone.utc),
         )
         db.add(admin)
+        db.flush()
+        send_invite_email(data.admin_email, data.admin_password, data.admin_name)
 
     db.commit()
     db.refresh(company)

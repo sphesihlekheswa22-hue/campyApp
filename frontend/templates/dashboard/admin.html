@@ -192,13 +192,15 @@
     dashboardLoading = true;
     try {
       // Fetch all data in parallel
-      const [health, logs, users, companies, benchmark] = await Promise.all([
+      const [health, logs, usersRaw, companiesRaw, benchmark] = await Promise.all([
         API.get('/analytics/system-health'),
         API.get('/audit/?search='),
         API.get('/users/'),
         API.get('/companies/'),
         API.get('/analytics/benchmark'),
       ]);
+      const users = Utils.unwrapList(usersRaw);
+      const companies = Utils.unwrapList(companiesRaw);
 
       // Update welcome name
       const user = await API.get('/users/me').catch(() => ({ name: 'Admin' }));
@@ -213,8 +215,8 @@
           <div class="kpi-value text-blue-400">${health.total_companies}</div>
           <div class="kpi-label">Companies</div>
           <div class="kpi-change positive">
-            <i data-lucide="trending-up" class="w-3 h-3"></i>
-            +12% this month
+            <i data-lucide="building-2" class="w-3 h-3"></i>
+            On platform
           </div>
         </div>
         <div class="kpi-card">

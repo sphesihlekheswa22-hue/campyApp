@@ -149,6 +149,15 @@
                     <i data-lucide="building-2" class="w-3.5 h-3.5"></i>
                     ${company.industry || 'N/A'}
                   </span>
+                  ${company.jse_code ? `<span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                  <span class="flex items-center gap-1.5 text-sm text-slate-400">
+                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+                    JSE ${company.jse_code}
+                  </span>` : ''}
+                  ${company.sector ? `<span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                  <span class="text-sm text-slate-400">${company.sector}</span>` : ''}
+                  ${company.market_cap ? `<span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                  <span class="text-sm text-slate-400">Mkt cap R${Utils.formatNumber(company.market_cap)}</span>` : ''}
                 </div>
               </div>
             </div>
@@ -301,7 +310,7 @@
 
     // Reports List with premium styling
     try {
-      const reports = await API.get(`/reports/?company_id=${id}`);
+      const reports = Utils.unwrapList(await API.get(`/reports/?company_id=${id}`));
       const reportsCount = document.getElementById('reports-count');
 
       if (reportsCount) {

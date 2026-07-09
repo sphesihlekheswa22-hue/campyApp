@@ -6,8 +6,10 @@ Production-ready SaaS for JSE annual report analytics, governance analysis, and 
 
 - **Backend:** Python FastAPI, SQLAlchemy, PostgreSQL, Alembic, JWT, RBAC
 - **Frontend:** Vanilla HTML (Jinja2 templates), Tailwind CSS, JavaScript, Chart.js
-- **Data extraction:** pdfplumber, Camelot, Pandas — rule-based analytics scoring
-- **Infrastructure:** Docker, PostgreSQL; Render + Neon for production
+- **Storage:** Local disk or S3-compatible (Cloudflare R2, AWS S3)
+- **Jobs:** Database-backed queue with background worker + APScheduler
+- **Extraction:** pdfplumber, optional Camelot, OCR, optional OpenAI LLM assist
+- **Email:** Brevo API (production) or MailHog (dev)
 
 ## Quick Start (Docker)
 
@@ -21,85 +23,64 @@ Open http://localhost:8000
 ### Default Platform Owner
 
 - Email: `admin@bluemachines.com`
-- Password: set via `PLATFORM_OWNER_PASSWORD` in `.env` (default `Admin123!` in dev)
+- Password: set via `PLATFORM_OWNER_PASSWORD` in `.env`
 
-### Dev Email (MailHog)
+## Production (Render + Neon + R2)
 
-- SMTP: localhost:1025
-- Web UI: http://localhost:8025
+1. Push to GitHub
+2. Neon PostgreSQL → `DATABASE_URL`
+3. Cloudflare R2 bucket → set `STORAGE_BACKEND=s3`, `S3_*` vars
+4. Brevo API key → `BREVO_API_KEY`
+5. Set `APP_URL` to your Render URL
+6. Deploy via `render.yaml` blueprint
+
+Run migrations on deploy: `alembic upgrade head` (in `start.sh`)
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| Report upload & extraction | PDF → financials + governance, auto analytics |
+| Report detail page | Per-report financials, governance, retry, PDF download |
+| S3/R2 storage | PDFs survive Render redeploys |
+| Job queue | Reliable extraction via `background_jobs` table |
+| Notifications | In-app alerts for extraction, uploads, health |
+| Compliance checklist | King IV + JSE Listings mapping |
+| JSE metadata | JSE code, sector, listing date, market cap on companies |
+| Scheduled emails | Monthly analytics summary (Settings) |
+| Invite flow | Temp password + force change on first login |
+| API pagination | Users, companies, reports return `{ items, total }` |
+| Health alerts | Email platform owner when extractions backlog |
 
 ## API Endpoints
 
 | Prefix | Description |
 |--------|-------------|
-| `/api/auth` | Login, PIN confirmation, password reset |
-| `/api/users` | Admin-created users, profile |
-| `/api/companies` | Company CRUD, logos |
-| `/api/reports` | PDF upload (company admin), download, detail |
-| `/api/extractions` | Extraction results, summary, retry |
-| `/api/analytics` | Trends, scores, risk, benchmarking, exports |
-| `/api/governance` | Governance narratives |
+| `/api/auth` | Login, password change, reset |
+| `/api/users` | Admin-created users, invite emails |
+| `/api/companies` | CRUD with JSE metadata |
+| `/api/reports` | Upload, download (S3/local), paginated list |
+| `/api/extractions` | Results, summary, retry via job queue |
+| `/api/analytics` | Scores, benchmarking, PDF/Excel export |
+| `/api/governance` | Narratives + `/compliance` checklist |
+| `/api/notifications` | In-app notification feed |
+| `/api/scheduled-reports` | Monthly email schedules |
 | `/api/audit` | Audit logs (platform owner) |
 
 ## User Roles
 
-1. **Platform Owner** — Manage companies and users, view all data, audit logs, system health. Does not upload reports.
-2. **Company Admin** — Upload reports, run analysis, manage team, view analytics and governance.
-3. **Employee** — View assigned company data (read-only; no exports).
+1. **Platform Owner** — Companies, users, view all data, audit, health (no report upload)
+2. **Company Admin** — Upload reports, team, analytics, scheduled emails
+3. **Employee** — Read-only company data
 
-Users are created by admins only — there is no public self-registration.
-
-## Typical workflow
-
-1. Platform owner creates a company and company admin.
-2. Company admin uploads a PDF annual report (optional FY year tag).
-3. Extraction runs automatically; analytics runs when extraction completes.
-4. View scores on Dashboard, Analytics, Governance, and per-report detail pages.
-
-## Local Development (without Docker)
-
-### Backend
+## Tests
 
 ```bash
 cd backend
 pip install -r requirements.txt
-# Start PostgreSQL and set DATABASE_URL in .env
-alembic upgrade head
-python -m app.seed
-uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-Served automatically by FastAPI from `frontend/templates/` using Jinja2 (`base.html` layout inheritance).
-
-## Production Deployment
-
-See **[DEPLOY.md](DEPLOY.md)** for Render + Neon step-by-step instructions.
-
-Quick summary:
-
-1. Push this repo to GitHub
-2. Create a Neon PostgreSQL project and copy `DATABASE_URL`
-3. Connect the repo on Render (Blueprint uses `render.yaml`)
-4. Set `DATABASE_URL`, `JWT_SECRET`, and `PLATFORM_OWNER_PASSWORD` in Render env vars
-
-**Note:** Render free tier uses ephemeral disk — uploaded PDFs are lost on redeploy. Use S3/R2 or persistent disk for production file storage.
-
-For Docker/self-hosted:
-
-1. Set strong `JWT_SECRET` and database credentials in `.env`
-2. Run migrations and seed: `alembic upgrade head && python -m app.seed`
-3. Serve with `uvicorn app.main:app --host 0.0.0.0 --port 8000`
-
-## Project Structure
-
-```
-backend/app/          # FastAPI app, routers, models, extraction, analytics
-frontend/templates/   # Jinja2 HTML pages
-frontend/js/          # API client, auth, layout, utilities
+pytest tests/ -q
 ```
 
 ## License
 
-Proprietary — Blue Machines / campyApp
+Proprietary — campyApp

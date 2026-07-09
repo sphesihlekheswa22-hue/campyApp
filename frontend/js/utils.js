@@ -77,6 +77,13 @@ const Utils = {
     const query = sp.toString();
     return query ? `?${query}` : '';
   },
+
+  /** Normalize paginated API responses `{ items, total }` or plain arrays. */
+  unwrapList(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    return [];
+  },
 };
 
 window.Utils = Utils;

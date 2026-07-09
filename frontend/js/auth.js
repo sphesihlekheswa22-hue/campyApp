@@ -12,6 +12,7 @@ const Auth = {
     '/governance/index.html': ['platform_owner', 'company_admin', 'employee'],
     '/audit-logs/index.html': ['platform_owner'],
     '/settings/index.html': ['platform_owner', 'company_admin', 'employee'],
+    '/auth/change-password.html': ['platform_owner', 'company_admin', 'employee'],
   },
 
   PERMISSIONS: {

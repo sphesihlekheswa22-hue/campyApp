@@ -129,7 +129,7 @@
           API.get('/companies/'),
         ]);
 
-        const companyMap = Object.fromEntries(companies.map(c => [c.id, c.company_name]));
+        const companyMap = Object.fromEntries(Utils.unwrapList(companies).map(c => [c.id, c.company_name]));
         const filename = (report.file_path || '').split('/').pop() || `Report #${report.id}`;
         const companyName = companyMap[report.company_id] || `Company #${report.company_id}`;
 

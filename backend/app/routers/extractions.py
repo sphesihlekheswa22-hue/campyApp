@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.security import get_current_user, require_roles
@@ -6,6 +6,7 @@ from app.database.session import get_db
 from app.extraction.pipeline import run_extraction
 from app.models import AnnualReport, ExtractedFinancial, GovernanceNarrative, ReportStatus, User, UserRole
 from app.schemas import FinancialResponse, GovernanceResponse, ReportExtractionSummary, ReportResponse
+from app.services.job_service import enqueue_job
 
 router = APIRouter(prefix="/extractions", tags=["extractions"])
 
@@ -84,7 +85,6 @@ def get_governance_by_report(
 @router.post("/retry/{report_id}", response_model=ReportResponse)
 def retry_extraction(
     report_id: int,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.platform_owner, UserRole.company_admin])),
 ):
@@ -95,5 +95,5 @@ def retry_extraction(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     report.status = ReportStatus.pending
     db.commit()
-    background_tasks.add_task(run_extraction, report_id)
+    enqueue_job(db, "extraction", {"report_id": report_id})
     return report

@@ -84,6 +84,11 @@
         password: fd.get('password'),
       });
       Auth.login(data);
+      if (data.must_change_password) {
+        AuthUI.showToast('Please set a new password', 'info');
+        setTimeout(() => { window.location.href = '/auth/change-password.html'; }, 400);
+        return;
+      }
       AuthUI.showToast('Login successful! Redirecting...', 'success');
       setTimeout(() => Auth.redirectByRole(), 500);
     } catch (err) {
