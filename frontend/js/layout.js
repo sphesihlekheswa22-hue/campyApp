@@ -33,17 +33,48 @@ const Layout = {
   _initStarted: false,
 
   refreshIcons(root) {
-    if (typeof lucide === 'undefined' || this._iconRefreshScheduled) return;
+    if (typeof lucide === 'undefined') return;
+    if (this._iconRefreshScheduled) return;
     this._iconRefreshScheduled = true;
     requestAnimationFrame(() => {
-      lucide.createIcons(root ? { root } : undefined);
+      try {
+        lucide.createIcons(root ? { root } : undefined);
+      } catch (e) {
+        console.warn('Icon refresh failed', e);
+      }
       this._iconRefreshScheduled = false;
     });
+  },
+
+  _updateSidebarToggleIcon(collapsed) {
+    const icon = document.getElementById('sidebar-toggle-icon');
+    if (icon) {
+      icon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left-close');
+      this.refreshIcons(icon.parentElement || document.getElementById('sidebar'));
+    }
+    const headerBtn = document.getElementById('desktop-sidebar-toggle');
+    if (headerBtn) {
+      const headerIcon = headerBtn.querySelector('[data-lucide]');
+      if (headerIcon) {
+        headerIcon.setAttribute('data-lucide', collapsed ? 'panel-left-open' : 'panel-left');
+        this.refreshIcons(headerBtn);
+      }
+    }
+  },
+
+  _applySidebarState() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    sidebar.classList.toggle('collapsed', collapsed);
+    this._updateSidebarToggleIcon(collapsed);
   },
 
   async init() {
     if (this._initStarted) return;
     this._initStarted = true;
+
+    this._applySidebarState();
 
     const role = Auth.getRole();
     const path = window.location.pathname;
@@ -52,19 +83,28 @@ const Layout = {
     let menu = [...(this.menus[role] || [])];
 
     if (Auth.isLoggedIn() && (role === 'company_admin' || role === 'employee')) {
-      try {
-        const user = await API.get('/users/me');
-        if (user.company_id) {
-          sessionStorage.setItem('company_id', user.company_id);
-          menu = menu.map((item) => {
-            if (item.dynamic === 'company') {
-              return { ...item, href: `/companies/detail.html?id=${user.company_id}` };
-            }
-            return item;
-          });
+      let companyId = sessionStorage.getItem('company_id');
+      if (!companyId) {
+        try {
+          const user = await Promise.race([
+            API.get('/users/me'),
+            new Promise((resolve) => setTimeout(() => resolve(null), 8000)),
+          ]);
+          if (user?.company_id) {
+            companyId = String(user.company_id);
+            sessionStorage.setItem('company_id', companyId);
+          }
+        } catch {
+          /* use default menu hrefs */
         }
-      } catch {
-        /* profile optional */
+      }
+      if (companyId) {
+        menu = menu.map((item) => {
+          if (item.dynamic === 'company') {
+            return { ...item, href: `/companies/detail.html?id=${companyId}` };
+          }
+          return item;
+        });
       }
     }
 
@@ -87,12 +127,8 @@ const Layout = {
       roleLabel.textContent = Auth.getRoleLabel();
     }
 
-    await this.loadUserProfile();
-    this.loadNotificationBadge();
-
-    const sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && sidebarCollapsed) sidebar.classList.add('collapsed');
+    this.loadUserProfile().catch(() => {});
+    this.loadNotificationBadge().catch(() => {});
 
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
@@ -101,7 +137,10 @@ const Layout = {
   async loadUserProfile() {
     if (!Auth.isLoggedIn()) return;
     try {
-      const user = await API.get('/users/me');
+      const user = await Promise.race([
+        API.get('/users/me'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
+      ]);
       if (user.company_id) sessionStorage.setItem('company_id', user.company_id);
       const initials = `${(user.name || 'U')[0]}${(user.surname || '')[0] || ''}`.toUpperCase();
       const initialsEl = document.getElementById('user-initials');
@@ -128,8 +167,10 @@ const Layout = {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
     sidebar.classList.toggle('collapsed');
-    localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
-    this.refreshIcons();
+    const collapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebar-collapsed', collapsed);
+    this._updateSidebarToggleIcon(collapsed);
+    this.refreshIcons(sidebar);
   },
 
   showToast(message, type = 'info') {
@@ -239,8 +280,11 @@ const Layout = {
   async loadNotificationBadge() {
     if (!Auth.isLoggedIn()) return;
     try {
-      const { count } = await API.get('/notifications/unread-count');
-      const badge = document.getElementById('notification-badge');
+      const { count } = await Promise.race([
+        API.get('/notifications/unread-count'),
+        new Promise((resolve) => setTimeout(() => resolve({ count: 0 }), 8000)),
+      ]);
+      const badge = document.getElementById('notification-badge') || document.getElementById('notif-badge');
       if (badge) {
         badge.textContent = count > 99 ? '99+' : count;
         badge.classList.toggle('hidden', !count);
@@ -294,7 +338,7 @@ document.addEventListener('keydown', (e) => {
     const searchInput = document.getElementById('global-search') || document.getElementById('sidebar-search');
     if (searchInput) searchInput.focus();
   }
-    if (e.key === 'Escape') {
+  if (e.key === 'Escape') {
     Layout.closeModal();
     const sidebar = document.getElementById('sidebar');
     if (sidebar?.classList.contains('mobile-open')) Layout.toggleMobile();

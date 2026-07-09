@@ -106,7 +106,10 @@ def system_health(
         AnnualReport.status.in_([ReportStatus.pending, ReportStatus.processing])
     ).count()
     failed_ext = db.query(AnnualReport).filter(AnnualReport.status == ReportStatus.failed).count()
-    pending_jobs = db.query(BackgroundJob).filter(BackgroundJob.status == JobStatus.pending).count()
+    try:
+        pending_jobs = db.query(BackgroundJob).filter(BackgroundJob.status == JobStatus.pending).count()
+    except Exception:
+        pending_jobs = 0
     alerts = []
     if failed_ext >= settings.alert_failed_extractions_threshold:
         alerts.append(f"{failed_ext} failed extractions exceed threshold")

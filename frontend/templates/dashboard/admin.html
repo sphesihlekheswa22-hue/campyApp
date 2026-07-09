@@ -471,15 +471,28 @@
 
     } catch (e) { 
       console.error(e);
-      Toast.show('error', e.message || 'Failed to load dashboard data');
+      const msg = e.message || 'Failed to load dashboard data';
+      Toast.show('error', msg);
+      document.getElementById('kpi-cards').innerHTML = `
+        <div class="lg:col-span-4 card-premium p-8 text-center col-span-full">
+          <i data-lucide="alert-circle" class="w-10 h-10 text-red-400 mx-auto mb-3"></i>
+          <p class="text-sm text-red-400">${msg}</p>
+          <button type="button" class="btn-premium btn-secondary-glass mt-4 text-sm" onclick="load()">Retry</button>
+        </div>`;
+      document.getElementById('system-health').innerHTML = `<p class="text-sm text-slate-500 py-4">Unable to load system health.</p>`;
+      document.getElementById('resource-usage').innerHTML = `<p class="text-sm text-slate-500 py-4">Unable to load metrics.</p>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     } finally {
       dashboardLoading = false;
     }
   }
 
+  window.load = load;
+
   function viewAllActivity() {
     window.location.href = '/audit-logs/index.html';
   }
+  window.viewAllActivity = viewAllActivity;
 
   // Auto-refresh every 30 seconds
   setInterval(() => {

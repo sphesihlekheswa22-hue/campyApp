@@ -309,6 +309,22 @@
       overflow: hidden;
     }
 
+    /* Keep collapse/expand control visible when sidebar is minimized */
+    .sidebar-toggle-btn {
+      flex-shrink: 0;
+    }
+
+    .sidebar.collapsed #sidebar-logo-row {
+      flex-direction: column;
+      gap: 0.5rem;
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+
+    .sidebar.collapsed .sidebar-toggle-btn {
+      margin-left: 0;
+    }
+
     .sidebar.collapsed .nav-link {
       justify-content: center;
       padding: 12px;
@@ -500,6 +516,16 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gradient-animated">
+  <script>
+    try {
+      if (localStorage.getItem('sidebar-collapsed') === 'true') {
+        document.addEventListener('DOMContentLoaded', function () {
+          var s = document.getElementById('sidebar');
+          if (s) s.classList.add('collapsed');
+        });
+      }
+    } catch (e) {}
+  </script>
   <!-- Mobile Overlay -->
   <div id="mobile-overlay" class="mobile-overlay fixed inset-0 bg-black/60 z-40 lg:hidden" onclick="Layout.toggleMobile()"></div>
 
@@ -507,16 +533,16 @@
     <!-- Sidebar -->
     <aside class="sidebar sidebar-glass z-50 flex flex-col" id="sidebar">
       <!-- Logo Section -->
-      <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700/30">
-        <div class="logo-glow relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 flex-shrink-0">
+      <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700/30" id="sidebar-logo-row">
+        <div class="logo-glow relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 flex-shrink-0 cursor-pointer" onclick="Layout.toggleSidebar()" title="Expand sidebar">
           <i data-lucide="bar-chart-3" class="w-5 h-5 text-white"></i>
         </div>
-        <div class="sidebar-text transition-all duration-300 overflow-hidden">
+        <div class="sidebar-text transition-all duration-300 overflow-hidden flex-1 min-w-0">
           <h2 class="text-lg font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">JSE Analytics</h2>
           <p class="text-[11px] text-slate-500 font-medium tracking-wide uppercase">Bluemachines Platform</p>
         </div>
-        <button id="sidebar-collapse-btn" class="sidebar-text ml-auto p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors hidden lg:block" onclick="Layout.toggleSidebar()">
-          <i data-lucide="panel-left-close" class="w-4 h-4"></i>
+        <button id="sidebar-collapse-btn" type="button" class="sidebar-toggle-btn ml-auto p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors hidden lg:flex" onclick="Layout.toggleSidebar()" title="Toggle sidebar">
+          <i data-lucide="panel-left-close" class="w-4 h-4" id="sidebar-toggle-icon"></i>
         </button>
       </div>
 
@@ -563,6 +589,9 @@
       <!-- Header -->
       <header class="header-glass flex items-center justify-between px-4 lg:px-6" style="height: var(--header-height);">
         <div class="flex items-center gap-4">
+          <button id="desktop-sidebar-toggle" type="button" class="btn-secondary-glass p-2.5 hidden lg:flex" onclick="Layout.toggleSidebar()" title="Toggle sidebar">
+            <i data-lucide="panel-left" class="w-5 h-5"></i>
+          </button>
           <button id="mobile-menu-btn" class="btn-secondary-glass p-2.5 lg:hidden" type="button" onclick="Layout.toggleMobile()">
             <i data-lucide="menu" class="w-5 h-5"></i>
           </button>
@@ -635,10 +664,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/js/api.js?v=3"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/utils.js?v=3"></script>
-  <script src="/js/layout.js?v=3"></script>
+  <script src="/js/api.js?v=4"></script>
+  <script src="/js/auth.js?v=4"></script>
+  <script src="/js/utils.js?v=4"></script>
+  <script src="/js/layout.js?v=4"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
