@@ -187,16 +187,17 @@
         }
         if (isOwner) {
           const current = document.getElementById('company-filter').value;
+          const companyList = Utils.unwrapList(companies);
           document.getElementById('company-filter').innerHTML =
             '<option value="">All companies</option>' +
-            companies.map((c) => `<option value="${c.id}">${c.company_name}</option>`).join('');
+            companyList.map((c) => `<option value="${c.id}">${c.company_name}</option>`).join('');
           if (current) document.getElementById('company-filter').value = current;
         }
 
-        document.getElementById('stat-total').textContent = reports.length;
-        document.getElementById('stat-complete').textContent = reports.filter(r => r.status === 'complete').length;
-        document.getElementById('stat-processing').textContent = reports.filter(r => ['pending', 'processing'].includes(r.status)).length;
-        document.getElementById('stat-failed').textContent = reports.filter(r => r.status === 'failed').length;
+        document.getElementById('stat-total').textContent = allReports.length;
+        document.getElementById('stat-complete').textContent = allReports.filter(r => r.status === 'complete').length;
+        document.getElementById('stat-processing').textContent = allReports.filter(r => ['pending', 'processing'].includes(r.status)).length;
+        document.getElementById('stat-failed').textContent = allReports.filter(r => r.status === 'failed').length;
 
         renderTable();
       } catch (err) {
