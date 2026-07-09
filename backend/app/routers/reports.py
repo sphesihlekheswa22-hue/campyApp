@@ -8,12 +8,13 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_user, require_roles
 from app.config import get_settings
 from app.database.session import get_db
-from app.models import AnnualReport, NotificationType, ReportStatus, User, UserRole
+from app.models import AnnualReport, Company, NotificationType, ReportStatus, User, UserRole
 from app.schemas import PaginatedResponse, ReportResponse
 from app.services.audit_service import log_audit
 from app.services.job_service import enqueue_job
 from app.services.notification_service import notify_company_users
 from app.services.storage_service import storage
+from app.services.subscription_service import assert_company_active
 from app.utils.pagination import paginate
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -58,6 +59,8 @@ async def upload_report(
 ):
     if not _can_access_company(current_user, company_id):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
+    company = db.query(Company).filter(Company.id == company_id).first()
+    assert_company_active(company)
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
 

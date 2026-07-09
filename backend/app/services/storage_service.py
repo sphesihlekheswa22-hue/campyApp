@@ -51,6 +51,20 @@ class StorageService:
         with open(full, "rb") as f:
             return f.read()
 
+    def delete(self, key: str) -> None:
+        normalized = key.replace("\\", "/").lstrip("/")
+        if normalized.startswith("uploads/"):
+            normalized = normalized[len("uploads/"):]
+        if self.backend == "s3" and settings.s3_bucket:
+            try:
+                self._get_s3().delete_object(Bucket=settings.s3_bucket, Key=normalized)
+            except Exception:
+                pass
+            return
+        full = os.path.join(settings.upload_dir, normalized)
+        if os.path.isfile(full):
+            os.remove(full)
+
     def exists(self, key: str) -> bool:
         normalized = key.replace("\\", "/").lstrip("/")
         if normalized.startswith("uploads/"):
@@ -77,6 +91,14 @@ class StorageService:
             tmp.close()
             return tmp.name
         return os.path.join(settings.upload_dir, normalized)
+
+    def public_url(self, key: str) -> str:
+        normalized = key.replace("\\", "/").lstrip("/")
+        return f"/api/files/{normalized}"
+
+    @staticmethod
+    def content_type(path: str) -> str:
+        return StorageService._content_type(path)
 
     @staticmethod
     def _content_type(path: str) -> str:

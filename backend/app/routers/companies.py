@@ -14,7 +14,9 @@ from app.models import AnnualReport, Company, SubscriptionStatus, User, UserRole
 from app.schemas import CompanyCreateRequest, CompanyListResponse, CompanyResponse, CompanyUpdateRequest, PaginatedResponse
 from app.utils.pagination import paginate
 from app.services.audit_service import log_audit
+from app.services.company_service import delete_company_cascade
 from app.services.email_service import send_invite_email
+from app.services.storage_service import storage
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 settings = get_settings()
@@ -33,7 +35,7 @@ def list_companies(
     query = db.query(Company)
     if current_user.role == UserRole.company_admin or current_user.role == UserRole.employee:
         if not current_user.company_id:
-            return []
+            return PaginatedResponse(items=[], total=0, limit=limit, offset=offset)
         query = query.filter(Company.id == current_user.company_id)
     if search:
         term = f"%{search.strip()}%"
@@ -171,14 +173,16 @@ async def upload_logo(
         raise HTTPException(status_code=404, detail="Company not found")
     if current_user.role == UserRole.company_admin and current_user.company_id != company_id:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    os.makedirs(os.path.join(settings.upload_dir, "logos"), exist_ok=True)
-    ext = os.path.splitext(file.filename or "logo.png")[1]
-    filename = f"{uuid.uuid4()}{ext}"
-    path = os.path.join(settings.upload_dir, "logos", filename)
+    ext = os.path.splitext(file.filename or "logo.png")[1].lower()
+    if ext not in {".png", ".jpg", ".jpeg", ".webp"}:
+        raise HTTPException(status_code=400, detail="Only PNG, JPG, or WEBP images allowed")
     content = await file.read()
-    with open(path, "wb") as f:
-        f.write(content)
-    company.logo = f"/uploads/logos/{filename}"
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo must be under 5MB")
+    filename = f"{uuid.uuid4()}{ext}"
+    key = f"logos/{filename}"
+    storage.save(key, content)
+    company.logo = storage.public_url(key)
     db.commit()
     log_audit(db, current_user.id, "upload_logo", f"company:{company_id}", request.client.host if request.client else None)
     return {"logo": company.logo}
@@ -194,7 +198,7 @@ def delete_company(
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
-    db.delete(company)
+    delete_company_cascade(db, company)
     db.commit()
     log_audit(db, current_user.id, "delete_company", f"company:{company_id}", request.client.host if request.client else None)
     return {"message": "Company deleted"}

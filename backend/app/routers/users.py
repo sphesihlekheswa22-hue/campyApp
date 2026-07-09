@@ -14,6 +14,7 @@ from app.models import User, UserRole
 from app.schemas import PaginatedResponse, UserAdminUpdateRequest, UserCreateRequest, UserResponse, UserUpdateRequest
 from app.services.audit_service import log_audit
 from app.services.email_service import send_invite_email
+from app.services.storage_service import storage
 from app.utils.pagination import paginate
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -47,14 +48,16 @@ async def upload_photo(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    os.makedirs(os.path.join(settings.upload_dir, "photos"), exist_ok=True)
-    ext = os.path.splitext(file.filename or "photo.jpg")[1]
-    filename = f"{uuid.uuid4()}{ext}"
-    path = os.path.join(settings.upload_dir, "photos", filename)
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower()
+    if ext not in {".png", ".jpg", ".jpeg", ".webp"}:
+        raise HTTPException(status_code=400, detail="Only PNG, JPG, or WEBP images allowed")
     content = await file.read()
-    with open(path, "wb") as f:
-        f.write(content)
-    current_user.profile_photo = f"/uploads/photos/{filename}"
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Photo must be under 5MB")
+    filename = f"{uuid.uuid4()}{ext}"
+    key = f"photos/{filename}"
+    storage.save(key, content)
+    current_user.profile_photo = storage.public_url(key)
     db.commit()
     log_audit(db, current_user.id, "upload_photo", f"user:{current_user.id}", request.client.host if request.client else None)
     return {"profile_photo": current_user.profile_photo}

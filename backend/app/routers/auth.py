@@ -31,6 +31,7 @@ from app.services.email_service import (
     send_password_reset_email,
     token_expiry_hours,
 )
+from app.services.subscription_service import assert_user_company_active
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,6 +46,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account not activated")
+    assert_user_company_active(db, user)
 
     access = create_access_token(user.id, user.role.value)
     refresh = create_refresh_token(user.id, user.role.value)
@@ -66,6 +68,7 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == int(payload["sub"])).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found")
+    assert_user_company_active(db, user)
     return TokenResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=create_refresh_token(user.id, user.role.value),

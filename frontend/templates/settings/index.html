@@ -204,7 +204,7 @@
 
     window.uploadPhoto = uploadPhoto;
     async function loadSchedules() {
-      if (!Auth.canAccess(['company_admin', 'platform_owner'])) {
+      if (!Auth.canAccess(['company_admin'])) {
         document.getElementById('scheduled-reports-card')?.classList.add('hidden');
         return;
       }

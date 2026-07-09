@@ -38,10 +38,10 @@
         <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
           <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
         </div>
-        <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Pending</span>
+        <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Trial</span>
       </div>
       <p class="text-3xl font-bold text-slate-100" id="stat-pending">-</p>
-      <p class="text-xs text-slate-500 mt-1">Awaiting approval</p>
+      <p class="text-xs text-slate-500 mt-1">On trial period</p>
     </div>
   </div>
   <div class="card-premium p-5 relative overflow-hidden group">
@@ -73,7 +73,6 @@
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="trial">Trial</option>
-          <option value="pending">Pending</option>
           <option value="inactive">Inactive</option>
           <option value="suspended">Suspended</option>
         </select>
@@ -314,22 +313,25 @@
     const subtitle = document.getElementById('table-subtitle');
     if (subtitle) subtitle.textContent = 'Loading companies...';
 
-    const query = Utils.buildQuery(getCompanyFilters());
+    const query = Utils.buildQuery({ ...getCompanyFilters(), limit: 500 });
 
     try {
-      const companies = await API.get(`/companies/${query}`);
+      const response = await API.get(`/companies/${query}`);
+      const companies = Utils.unwrapList(response);
+      const total = response?.total ?? companies.length;
 
       // Update stats
-      document.getElementById('stat-total').textContent = companies.length;
+      document.getElementById('stat-total').textContent = total;
       document.getElementById('stat-active').textContent = companies.filter(c => c.subscription_status === 'active').length;
-      document.getElementById('stat-pending').textContent = companies.filter(c => ['pending', 'trial'].includes(c.subscription_status)).length;
+      document.getElementById('stat-pending').textContent = companies.filter(c => c.subscription_status === 'trial').length;
       document.getElementById('stat-reports').textContent = companies.reduce((sum, c) => sum + (c.report_count || 0), 0);
 
       // Update subtitle
-      document.getElementById('table-subtitle').textContent = `${companies.length} compan${companies.length === 1 ? 'y' : 'ies'} found`;
-      document.getElementById('pagination-info').textContent = `Showing ${companies.length} result${companies.length !== 1 ? 's' : ''}`;
+      document.getElementById('table-subtitle').textContent = `${total} compan${total === 1 ? 'y' : 'ies'} found`;
+      document.getElementById('pagination-info').textContent = `Showing ${companies.length} of ${total} result${total !== 1 ? 's' : ''}`;
 
       const tbody = document.querySelector('#companies-table tbody');
+      const searchTerm = getCompanyFilters().search;
 
       if (companies.length === 0) {
         tbody.innerHTML = `
@@ -340,7 +342,7 @@
                   <i data-lucide="search-x" class="w-8 h-8 text-slate-600"></i>
                 </div>
                 <p class="text-sm font-medium text-slate-400">No companies found</p>
-                <p class="text-xs text-slate-600 mt-1">${search ? 'Try adjusting your search terms' : 'Add your first company to get started'}</p>
+                <p class="text-xs text-slate-600 mt-1">${searchTerm ? 'Try adjusting your search terms' : 'Add your first company to get started'}</p>
               </div>
             </td>
           </tr>
