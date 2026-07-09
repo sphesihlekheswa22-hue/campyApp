@@ -33,10 +33,13 @@ def list_governance(
 
 @router.get("/categories")
 def list_categories(
+    company_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(GovernanceNarrative.category).join(AnnualReport).distinct()
     if current_user.role != UserRole.platform_owner:
         query = query.filter(AnnualReport.company_id == current_user.company_id)
+    elif company_id:
+        query = query.filter(AnnualReport.company_id == company_id)
     return [c[0] for c in query.all()]

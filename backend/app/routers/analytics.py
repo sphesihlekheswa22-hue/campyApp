@@ -53,11 +53,11 @@ def get_company_analytics(
 def trigger_analytics(
     company_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.platform_owner, UserRole.company_admin, UserRole.employee])),
+    current_user: User = Depends(require_roles([UserRole.platform_owner, UserRole.company_admin])),
 ):
     if not _can_access(current_user, company_id):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    run_company_analytics(company_id)
+    run_company_analytics(company_id, user_id=current_user.id)
     return {"message": "Analytics completed"}
 
 
@@ -68,10 +68,8 @@ def benchmark(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    data = get_benchmarking(db)
+    data = get_benchmarking(db, industry=industry)
     benchmarks = data["benchmarks"]
-    if industry:
-        benchmarks = [b for b in benchmarks if b.get("industry") == industry]
     if company_ids:
         ids = [int(x) for x in company_ids.split(",")]
         benchmarks = [b for b in benchmarks if b["company_id"] in ids]
@@ -108,6 +106,9 @@ def system_health(
         total_reports=db.query(AnnualReport).count(),
         pending_extractions=db.query(AnnualReport).filter(
             AnnualReport.status.in_([ReportStatus.pending, ReportStatus.processing])
+        ).count(),
+        failed_extractions=db.query(AnnualReport).filter(
+            AnnualReport.status == ReportStatus.failed
         ).count(),
     )
 

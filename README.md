@@ -6,8 +6,8 @@ Production-ready SaaS for JSE annual report analytics, governance analysis, and 
 
 - **Backend:** Python FastAPI, SQLAlchemy, PostgreSQL, Alembic, JWT, RBAC
 - **Frontend:** Vanilla HTML (Jinja2 templates), Tailwind CSS, JavaScript, Chart.js
-- **AI/Data:** pdfplumber, Camelot, Pandas, NumPy, Scikit-Learn
-- **Infrastructure:** Docker, PostgreSQL, MailHog (dev email)
+- **Data extraction:** pdfplumber, Camelot, Pandas — rule-based analytics scoring
+- **Infrastructure:** Docker, PostgreSQL; Render + Neon for production
 
 ## Quick Start (Docker)
 
@@ -21,7 +21,7 @@ Open http://localhost:8000
 ### Default Platform Owner
 
 - Email: `admin@bluemachines.com`
-- Password: `Admin123!`
+- Password: set via `PLATFORM_OWNER_PASSWORD` in `.env` (default `Admin123!` in dev)
 
 ### Dev Email (MailHog)
 
@@ -32,20 +32,29 @@ Open http://localhost:8000
 
 | Prefix | Description |
 |--------|-------------|
-| `/api/auth` | Registration, login, PIN confirmation, password reset |
-| `/api/users` | User management, profile |
+| `/api/auth` | Login, PIN confirmation, password reset |
+| `/api/users` | Admin-created users, profile |
 | `/api/companies` | Company CRUD, logos |
-| `/api/reports` | PDF upload, download |
-| `/api/extractions` | Extraction results, retry |
+| `/api/reports` | PDF upload (company admin), download, detail |
+| `/api/extractions` | Extraction results, summary, retry |
 | `/api/analytics` | Trends, scores, risk, benchmarking, exports |
 | `/api/governance` | Governance narratives |
 | `/api/audit` | Audit logs (platform owner) |
 
 ## User Roles
 
-1. **Platform Owner** — All companies, subscriptions, audit logs, system health
-2. **Company Admin** — Company users, reports, analytics, governance
-3. **Employee** — View assigned company data, limited exports
+1. **Platform Owner** — Manage companies and users, view all data, audit logs, system health. Does not upload reports.
+2. **Company Admin** — Upload reports, run analysis, manage team, view analytics and governance.
+3. **Employee** — View assigned company data (read-only; no exports).
+
+Users are created by admins only — there is no public self-registration.
+
+## Typical workflow
+
+1. Platform owner creates a company and company admin.
+2. Company admin uploads a PDF annual report (optional FY year tag).
+3. Extraction runs automatically; analytics runs when extraction completes.
+4. View scores on Dashboard, Analytics, Governance, and per-report detail pages.
 
 ## Local Development (without Docker)
 
@@ -75,36 +84,22 @@ Quick summary:
 3. Connect the repo on Render (Blueprint uses `render.yaml`)
 4. Set `DATABASE_URL`, `JWT_SECRET`, and `PLATFORM_OWNER_PASSWORD` in Render env vars
 
+**Note:** Render free tier uses ephemeral disk — uploaded PDFs are lost on redeploy. Use S3/R2 or persistent disk for production file storage.
+
 For Docker/self-hosted:
 
 1. Set strong `JWT_SECRET` and database credentials in `.env`
-2. Use HTTPS reverse proxy (nginx/Caddy) in front of FastAPI
-3. Run `docker-compose up -d` with production env vars
-4. Configure real SMTP credentials for email delivery
-5. Set up PostgreSQL backups for `postgres_data` volume
-6. Mount persistent volume for `uploads/`
+2. Run migrations and seed: `alembic upgrade head && python -m app.seed`
+3. Serve with `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
 ## Project Structure
 
 ```
-CompanyApp/
-├── backend/          # FastAPI application
-├── frontend/
-│   ├── templates/    # Jinja2 HTML (extends base.html)
-│   ├── css/
-│   └── js/
-├── docker-compose.yml
-└── .env.example
+backend/app/          # FastAPI app, routers, models, extraction, analytics
+frontend/templates/   # Jinja2 HTML pages
+frontend/js/          # API client, auth, layout, utilities
 ```
 
-## Features
+## License
 
-- JWT access & refresh tokens with bcrypt password hashing
-- Admin/Company/Employee registration with PIN activation
-- PDF extraction pipeline (financials + governance narratives)
-- Analytics engine (trends, scoring, ML risk classification)
-- Benchmarking and company comparison
-- PDF and Excel report exports
-- Audit logging on all mutations
-- Role-based dashboards and navigation
-- Dark mode responsive UI
+Proprietary — Blue Machines / campyApp

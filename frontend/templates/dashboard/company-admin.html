@@ -220,7 +220,20 @@
           ${riskLabel} Risk
         </span>`;
 
-      // KPI Cards
+      // KPI Cards — use real YoY trends when available
+      const trends = data.trends || {};
+      function yoyLabel(key, fallback) {
+        const v = trends[key];
+        if (v === undefined || v === null || v === '') return { html: fallback, cls: 'positive' };
+        const pos = v >= 0;
+        return {
+          html: `<i data-lucide="${pos ? 'trending-up' : 'trending-down'}" class="w-3 h-3"></i> ${pos ? '+' : ''}${v}% YoY`,
+          cls: pos ? 'positive' : 'negative',
+        };
+      }
+      const overallTrend = yoyLabel('revenue_growth', '<i data-lucide="minus" class="w-3 h-3"></i> No prior year data');
+      const financialTrend = yoyLabel('profit_growth', '<i data-lucide="minus" class="w-3 h-3"></i> No prior year data');
+
       document.getElementById('kpi-cards').innerHTML = `
         <div class="kpi-card">
           <div class="kpi-icon bg-blue-500/10">
@@ -228,9 +241,8 @@
           </div>
           <div class="kpi-value text-blue-400">${data.overall_score || 0}</div>
           <div class="kpi-label">Overall Score</div>
-          <div class="kpi-change positive">
-            <i data-lucide="trending-up" class="w-3 h-3"></i>
-            +3.2% vs last quarter
+          <div class="kpi-change ${overallTrend.cls}">
+            ${overallTrend.html}
           </div>
         </div>
         <div class="kpi-card">
@@ -239,9 +251,8 @@
           </div>
           <div class="kpi-value text-green-400">${data.financial_health_score || 0}</div>
           <div class="kpi-label">Financial Health</div>
-          <div class="kpi-change positive">
-            <i data-lucide="trending-up" class="w-3 h-3"></i>
-            +5.1% vs last quarter
+          <div class="kpi-change ${financialTrend.cls}">
+            ${financialTrend.html}
           </div>
         </div>
         <div class="kpi-card">

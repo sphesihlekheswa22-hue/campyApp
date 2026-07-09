@@ -46,9 +46,10 @@ async def upload_report(
     background_tasks: BackgroundTasks,
     request: Request,
     company_id: int = Query(...),
+    report_year: Optional[str] = Query(None, description="Optional FY tag e.g. 2024"),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.platform_owner, UserRole.company_admin])),
+    current_user: User = Depends(require_roles([UserRole.company_admin])),
 ):
     if not _can_access_company(current_user, company_id):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
@@ -72,7 +73,8 @@ async def upload_report(
     db.commit()
     db.refresh(report)
     log_audit(db, current_user.id, "upload_report", f"report:{report.id}", request.client.host if request.client else None)
-    background_tasks.add_task(run_extraction, report.id)
+    year_tag = (report_year or "").strip() or None
+    background_tasks.add_task(run_extraction, report.id, year_tag)
     return report
 
 

@@ -48,6 +48,13 @@
     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
     <input type="search" id="search" class="search-premium pl-10" placeholder="Search narratives…">
   </div>
+  <div class="relative w-full sm:w-56 hidden" id="company-filter-wrap">
+    <i data-lucide="building-2" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    <select id="company-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+      <option value="">All companies</option>
+    </select>
+    <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+  </div>
   <div class="relative w-full sm:w-56">
     <i data-lucide="filter" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
     <select id="category-filter" class="search-premium pl-10 appearance-none cursor-pointer w-full">
@@ -75,6 +82,11 @@
     Layout.setBreadcrumbs([{ label: 'Governance' }]);
 
     let allNarratives = [];
+    const isOwner = Auth.canAccess(['platform_owner']);
+
+    if (isOwner) {
+      document.getElementById('company-filter-wrap').classList.remove('hidden');
+    }
 
     const categoryIcons = {
       'Board Structure': 'users',
@@ -105,7 +117,12 @@
             <i data-lucide="shield-off" class="w-8 h-8 text-slate-600"></i>
           </div>
           <h3 class="text-lg font-semibold text-slate-400 mb-1">No governance narratives</h3>
-          <p class="text-sm text-slate-600">Upload and extract annual reports to populate governance data</p>
+          <p class="text-sm text-slate-600 mb-4">Upload and extract annual reports to populate governance data</p>
+          <ol class="text-xs text-slate-500 text-left space-y-1 list-decimal list-inside max-w-sm mx-auto">
+            <li>Upload a PDF on the Reports page</li>
+            <li>Wait for extraction to finish</li>
+            <li>Governance snippets appear here by category</li>
+          </ol>
         </div>`;
         return;
       }
@@ -153,7 +170,9 @@
 
     async function loadNarratives() {
       try {
-        allNarratives = await API.get('/governance/');
+        const companyId = isOwner ? document.getElementById('company-filter').value : '';
+        const q = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
+        allNarratives = await API.get(`/governance/${q}`);
         filterAndRender();
       } catch (err) {
         Layout.showToast(err.message || 'Failed to load governance data', 'error');
@@ -165,16 +184,34 @@
 
     async function loadCategories() {
       try {
-        const cats = await API.get('/governance/categories');
+        const companyId = isOwner ? document.getElementById('company-filter').value : '';
+        const q = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
+        const cats = await API.get(`/governance/categories${q}`);
         document.getElementById('category-filter').innerHTML = '<option value="">All categories</option>' +
           cats.map(c => `<option value="${c}">${c}</option>`).join('');
       } catch { /* optional */ }
     }
 
+    async function initGovernanceFilters() {
+      if (isOwner) {
+        try {
+          const companies = await API.get('/companies/');
+          const sel = document.getElementById('company-filter');
+          const current = sel.value;
+          sel.innerHTML = '<option value="">All companies</option>' +
+            companies.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('');
+          sel.value = current;
+        } catch { /* optional */ }
+      }
+    }
+
     document.getElementById('search').addEventListener('input', Utils.debounce(filterAndRender, 300));
     document.getElementById('category-filter').addEventListener('change', filterAndRender);
+    document.getElementById('company-filter')?.addEventListener('change', () => {
+      loadCategories().then(loadNarratives);
+    });
 
-    loadCategories().then(loadNarratives);
+    initGovernanceFilters().then(() => loadCategories().then(loadNarratives));
   })();
 </script>
 {% endblock %}

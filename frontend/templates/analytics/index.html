@@ -20,6 +20,13 @@
       <i data-lucide="play" class="w-4 h-4"></i>
       <span>Run Analysis</span>
     </button>
+    <div class="relative w-full sm:w-56">
+      <i data-lucide="factory" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+      <select id="industry-filter" class="search-premium pl-10 cursor-pointer appearance-none">
+        <option value="">All industries</option>
+      </select>
+      <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    </div>
   </div>
 
   <div class="flex gap-3">
@@ -168,6 +175,15 @@
         if (!select.disabled) select.value = companies[0].id;
         loadAnalytics();
       }
+
+      const industries = [...new Set(companies.map(c => c.industry).filter(Boolean))].sort();
+      const indFilter = document.getElementById('industry-filter');
+      if (indFilter) {
+        indFilter.innerHTML = '<option value="">All industries</option>' +
+          industries.map(i => `<option value="${i}">${i}</option>`).join('');
+        indFilter.addEventListener('change', loadBenchmark);
+      }
+
       loadBenchmark();
       if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) {
@@ -353,7 +369,9 @@
 
   async function loadBenchmark() {
     try {
-      const data = await API.get('/analytics/benchmark');
+      const industry = document.getElementById('industry-filter')?.value || '';
+      const q = industry ? `?industry=${encodeURIComponent(industry)}` : '';
+      const data = await API.get(`/analytics/benchmark${q}`);
       const benchmarks = data.benchmarks || [];
 
       if (benchmarkChart) benchmarkChart.destroy();

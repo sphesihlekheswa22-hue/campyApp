@@ -22,7 +22,7 @@ def resolve_report_file_path(stored_path: str) -> str:
     return os.path.join(settings.upload_dir, normalized)
 
 
-def run_extraction(report_id: int) -> None:
+def run_extraction(report_id: int, report_year: str | None = None) -> None:
     db = SessionLocal()
     try:
         report = db.query(AnnualReport).filter(AnnualReport.id == report_id).first()
@@ -44,7 +44,7 @@ def run_extraction(report_id: int) -> None:
 
         text = extract_text_from_pdf(file_path)
         tables = extract_tables_from_pdf(file_path)
-        financial_year = detect_financial_year(text)
+        financial_year = report_year or detect_financial_year(text)
 
         financials = extract_financials_from_text(text, financial_year)
         financials += extract_financials_from_tables(tables, financial_year)
@@ -85,7 +85,7 @@ def run_extraction(report_id: int) -> None:
 
         if report.status == ReportStatus.complete:
             from app.analytics.engine import run_company_analytics
-            run_company_analytics(report.company_id)
+            run_company_analytics(report.company_id, user_id=None)
 
     except Exception as e:
         print(f"[EXTRACTION ERROR] report {report_id}: {e}")

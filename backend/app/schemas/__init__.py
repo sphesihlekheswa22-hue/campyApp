@@ -218,3 +218,13 @@ class SystemHealthResponse(BaseModel):
     total_companies: int
     total_reports: int
     pending_extractions: int
+    failed_extractions: int = 0
+
+
+class ReportExtractionSummary(BaseModel):
+    report_id: int
+    status: ReportStatus
+    financial_count: int
+    governance_count: int
+    financial_year: Optional[str] = None
+    extraction_issues: list[str] = []

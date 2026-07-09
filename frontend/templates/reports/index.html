@@ -59,6 +59,17 @@
       <select id="company-select" class="search-premium pl-10 appearance-none cursor-pointer w-full"></select>
       <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
     </div>
+    <div class="relative w-full lg:w-48">
+      <i data-lucide="calendar" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+      <select id="report-year" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+        <option value="">Auto-detect year</option>
+        <option value="2025">FY2025</option>
+        <option value="2024">FY2024</option>
+        <option value="2023">FY2023</option>
+        <option value="2022">FY2022</option>
+      </select>
+      <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+    </div>
     <div class="relative w-full lg:flex-1">
       <input type="file" id="file-input" accept=".pdf" class="search-premium w-full file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-blue-500/20 file:text-blue-300 file:text-sm">
     </div>
@@ -211,12 +222,20 @@
       document.getElementById('table-subtitle').textContent = `${filtered.length} report${filtered.length !== 1 ? 's' : ''}`;
 
       if (!filtered.length) {
+        const workflow = allReports.length === 0 ? `
+          <ol class="text-xs text-slate-500 text-left mt-4 space-y-1.5 max-w-sm mx-auto list-decimal list-inside">
+            <li>Upload a PDF annual report</li>
+            <li>Wait for automatic extraction</li>
+            <li>Analytics runs automatically when extraction completes</li>
+            <li>View scores on Analytics &amp; Governance</li>
+          </ol>` : '';
         tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center">
           <div class="flex flex-col items-center gap-3">
             <div class="w-14 h-14 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center">
               <i data-lucide="file-x" class="w-7 h-7 text-slate-600"></i>
             </div>
-            <p class="text-sm text-slate-400">No reports found</p>
+            <p class="text-sm text-slate-400">${allReports.length === 0 ? 'No reports yet' : 'No reports match your filters'}</p>
+            ${workflow}
           </div>
         </td></tr>`;
         return;
@@ -242,6 +261,10 @@
           <td class="py-4 px-5 text-sm text-slate-500">${Utils.formatDate(r.upload_date)}</td>
           <td class="py-4 px-5 text-right">
             <div class="flex items-center justify-end gap-2">
+              <a href="/reports/detail.html?id=${r.id}" class="btn-premium btn-secondary-glass px-3 py-1.5 text-xs">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                <span>View</span>
+              </a>
               <button class="btn-premium btn-secondary-glass px-3 py-1.5 text-xs" onclick="downloadReport(${r.id})">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i>
                 <span>Download</span>
@@ -304,7 +327,9 @@
       btn.disabled = true;
 
       try {
-        await API.uploadWithProgress(`/reports/upload?company_id=${companyId}`, fd, (pct) => {
+        const year = document.getElementById('report-year')?.value || '';
+        const yearQ = year ? `&report_year=${encodeURIComponent(year)}` : '';
+        await API.uploadWithProgress(`/reports/upload?company_id=${companyId}${yearQ}`, fd, (pct) => {
           document.getElementById('progress-fill').style.width = pct + '%';
           document.getElementById('progress-text').textContent = `Uploading… ${pct}%`;
         });

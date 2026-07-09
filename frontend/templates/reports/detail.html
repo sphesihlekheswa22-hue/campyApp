@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}Report Detail - JSE Analytics{% endblock %}
+{% block page_title %}Report Detail{% endblock %}
+{% block content %}
+<div class="flex items-center gap-2 mb-6 text-sm">
+  <a href="/reports/index.html" class="breadcrumb-item hover:text-blue-400 transition-colors">Reports</a>
+  <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+  <span class="text-slate-300 font-medium" id="breadcrumb-report">Loading…</span>
+</div>
+
+<!-- Header -->
+<div class="card-premium p-6 mb-6" id="report-header">
+  <div class="h-8 w-64 bg-slate-700/50 rounded shimmer"></div>
+</div>
+
+<!-- Summary stats -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="summary-stats">
+  <div class="card-premium p-5"><div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div></div>
+  <div class="card-premium p-5"><div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div></div>
+  <div class="card-premium p-5"><div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div></div>
+  <div class="card-premium p-5"><div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div></div>
+</div>
+
+<!-- Extraction issues -->
+<div id="issues-panel" class="hidden card-premium p-5 mb-6 border border-amber-500/20 bg-amber-500/5">
+  <div class="flex items-start gap-3">
+    <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"></i>
+    <div>
+      <h3 class="text-sm font-semibold text-amber-300 mb-2">Extraction notes</h3>
+      <ul id="issues-list" class="text-sm text-amber-200/80 space-y-1 list-disc list-inside"></ul>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Financials -->
+  <div class="card-premium overflow-hidden">
+    <div class="flex items-center justify-between p-5 border-b border-slate-700/30">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+          <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100">Extracted Financials</h3>
+          <p class="text-xs text-slate-500">Metrics parsed from the PDF</p>
+        </div>
+      </div>
+    </div>
+    <div id="financials-table" class="p-5">
+      <div class="h-4 w-full bg-slate-700/50 rounded shimmer mb-2"></div>
+      <div class="h-4 w-3/4 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+  </div>
+
+  <!-- Governance -->
+  <div class="card-premium overflow-hidden">
+    <div class="flex items-center justify-between p-5 border-b border-slate-700/30">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
+          <i data-lucide="shield" class="w-4 h-4 text-purple-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100">Governance Snippets</h3>
+          <p class="text-xs text-slate-500">Narratives matched by category</p>
+        </div>
+      </div>
+    </div>
+    <div id="governance-list" class="p-5 space-y-4 max-h-[480px] overflow-y-auto">
+      <div class="h-4 w-full bg-slate-700/50 rounded shimmer"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (async function initReportDetail() {
+    if (!Auth.guardPage()) return;
+    Layout.init();
+    Layout.setBreadcrumbs([
+      { label: 'Reports', href: '/reports/index.html' },
+      { label: 'Detail' },
+    ]);
+
+    const reportId = Utils.getParam('id');
+    if (!reportId) {
+      location.href = '/reports/index.html';
+      return;
+    }
+
+    const canRetry = Auth.hasPermission('retry_extraction');
+
+    function formatMetric(value) {
+      if (value >= 1e9) return 'R ' + (value / 1e9).toFixed(2) + 'B';
+      if (value >= 1e6) return 'R ' + (value / 1e6).toFixed(2) + 'M';
+      if (value >= 1e3) return 'R ' + (value / 1e3).toFixed(1) + 'K';
+      return 'R ' + Number(value).toLocaleString();
+    }
+
+    async function retryExtraction() {
+      try {
+        await API.post(`/extractions/retry/${reportId}`);
+        Layout.showToast('Extraction queued — refresh shortly', 'success');
+        setTimeout(load, 2000);
+      } catch (err) {
+        Layout.showToast(err.message || 'Retry failed', 'error');
+      }
+    }
+
+    window.retryExtraction = retryExtraction;
+
+    async function downloadPdf() {
+      try {
+        await API.download(`/reports/${reportId}/download`, `report_${reportId}.pdf`);
+      } catch (err) {
+        Layout.showToast(err.message || 'Download failed', 'error');
+      }
+    }
+
+    window.downloadPdf = downloadPdf;
+
+    async function load() {
+      try {
+        const [report, summary, financials, governance, companies] = await Promise.all([
+          API.get(`/reports/${reportId}`),
+          API.get(`/extractions/report/${reportId}/summary`),
+          API.get(`/extractions/report/${reportId}/financials`),
+          API.get(`/extractions/report/${reportId}/governance`),
+          API.get('/companies/'),
+        ]);
+
+        const companyMap = Object.fromEntries(companies.map(c => [c.id, c.company_name]));
+        const filename = (report.file_path || '').split('/').pop() || `Report #${report.id}`;
+        const companyName = companyMap[report.company_id] || `Company #${report.company_id}`;
+
+        document.getElementById('breadcrumb-report').textContent = filename;
+        document.title = `${filename} - JSE Analytics`;
+
+        document.getElementById('report-header').innerHTML = `
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
+                <i data-lucide="file-text" class="w-7 h-7 text-blue-400"></i>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-slate-100">${filename}</h2>
+                <div class="flex items-center gap-3 mt-1 flex-wrap text-sm text-slate-400">
+                  <span class="flex items-center gap-1"><i data-lucide="building-2" class="w-3.5 h-3.5"></i>${companyName}</span>
+                  <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                  <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i>${Utils.formatDate(report.upload_date)}</span>
+                  <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                  ${Utils.statusBadge(report.status)}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button class="btn-premium btn-secondary-glass text-sm" onclick="downloadPdf()">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Source PDF</span>
+              </button>
+              ${canRetry ? `<button class="btn-premium btn-primary-glow text-sm" onclick="retryExtraction()">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                <span>Retry Extraction</span>
+              </button>` : ''}
+              <a href="/companies/detail.html?id=${report.company_id}" class="btn-premium btn-secondary-glass text-sm">
+                <i data-lucide="building-2" class="w-4 h-4"></i>
+                <span>View Company</span>
+              </a>
+            </div>
+          </div>`;
+
+        document.getElementById('summary-stats').innerHTML = `
+          <div class="card-premium p-5">
+            <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Financial metrics</p>
+            <p class="text-3xl font-bold text-slate-100">${summary.financial_count}</p>
+          </div>
+          <div class="card-premium p-5">
+            <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Governance items</p>
+            <p class="text-3xl font-bold text-slate-100">${summary.governance_count}</p>
+          </div>
+          <div class="card-premium p-5">
+            <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Financial year</p>
+            <p class="text-3xl font-bold text-slate-100">${summary.financial_year || '—'}</p>
+          </div>
+          <div class="card-premium p-5">
+            <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Status</p>
+            <div class="mt-2">${Utils.statusBadge(summary.status)}</div>
+          </div>`;
+
+        if (summary.extraction_issues && summary.extraction_issues.length) {
+          document.getElementById('issues-panel').classList.remove('hidden');
+          document.getElementById('issues-list').innerHTML = summary.extraction_issues
+            .map(i => `<li>${i}</li>`).join('');
+        } else {
+          document.getElementById('issues-panel').classList.add('hidden');
+        }
+
+        if (!financials.length) {
+          document.getElementById('financials-table').innerHTML = `
+            <div class="text-center py-8 text-sm text-slate-500">
+              <i data-lucide="bar-chart-2" class="w-8 h-8 text-slate-600 mx-auto mb-2"></i>
+              No financial metrics extracted yet
+            </div>`;
+        } else {
+          document.getElementById('financials-table').innerHTML = `
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-slate-500 border-b border-slate-700/30">
+                  <th class="pb-3 font-medium">Metric</th>
+                  <th class="pb-3 font-medium">Year</th>
+                  <th class="pb-3 font-medium text-right">Value</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-700/20">
+                ${financials.map(f => `
+                  <tr>
+                    <td class="py-3 text-slate-200">${f.metric_name}</td>
+                    <td class="py-3 text-slate-400">${f.financial_year}</td>
+                    <td class="py-3 text-right text-emerald-400 font-medium">${formatMetric(f.metric_value)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>`;
+        }
+
+        if (!governance.length) {
+          document.getElementById('governance-list').innerHTML = `
+            <div class="text-center py-8 text-sm text-slate-500">
+              <i data-lucide="shield-off" class="w-8 h-8 text-slate-600 mx-auto mb-2"></i>
+              No governance narratives extracted
+            </div>`;
+        } else {
+          document.getElementById('governance-list').innerHTML = governance.map(g => {
+            const pct = Math.round((g.confidence_score || 0) * 100);
+            return `<div class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-purple-300">${g.category}</span>
+                <span class="text-xs text-slate-500">${pct}% confidence</span>
+              </div>
+              <p class="text-sm text-slate-400 leading-relaxed">${g.content.substring(0, 500)}${g.content.length > 500 ? '…' : ''}</p>
+            </div>`;
+          }).join('');
+        }
+
+        Layout.refreshIcons();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to load report', 'error');
+        document.getElementById('report-header').innerHTML = `
+          <div class="text-center py-8 text-slate-400">${err.message || 'Report not found'}</div>`;
+      }
+    }
+
+    load();
+  })();
+</script>
+{% endblock %}
