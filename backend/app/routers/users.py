@@ -11,7 +11,7 @@ from app.auth.security import get_current_user, hash_password, require_roles
 from app.config import get_settings
 from app.database.session import get_db
 from app.models import User, UserRole
-from app.schemas import PaginatedResponse, UserCreateRequest, UserResponse, UserUpdateRequest
+from app.schemas import PaginatedResponse, UserAdminUpdateRequest, UserCreateRequest, UserResponse, UserUpdateRequest
 from app.services.audit_service import log_audit
 from app.services.email_service import send_invite_email
 from app.utils.pagination import paginate
@@ -150,7 +150,7 @@ def get_user(
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: int,
-    data: UserUpdateRequest,
+    data: UserAdminUpdateRequest,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.platform_owner, UserRole.company_admin])),
@@ -158,9 +158,24 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if current_user.role == UserRole.company_admin and user.company_id != current_user.company_id:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    if current_user.role == UserRole.company_admin:
+        if user.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        if user.role != UserRole.employee:
+            raise HTTPException(status_code=403, detail="Company admins can only edit employees")
+    if user.role == UserRole.platform_owner and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Cannot modify other platform owner accounts")
+
+    updates = data.model_dump(exclude_unset=True)
+    if current_user.role == UserRole.company_admin:
+        updates.pop("role", None)
+        updates.pop("company_id", None)
+    if updates.get("role") == UserRole.platform_owner:
+        raise HTTPException(status_code=403, detail="Cannot assign platform owner role")
+    if "role" in updates and updates["role"] == UserRole.company_admin and not updates.get("company_id", user.company_id):
+        raise HTTPException(status_code=400, detail="Company admins must be assigned to a company")
+
+    for field, value in updates.items():
         setattr(user, field, value)
     db.commit()
     db.refresh(user)
@@ -178,8 +193,15 @@ def delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if current_user.role == UserRole.company_admin and user.company_id != current_user.company_id:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account")
+    if user.role == UserRole.platform_owner:
+        raise HTTPException(status_code=403, detail="Platform owner accounts cannot be deleted")
+    if current_user.role == UserRole.company_admin:
+        if user.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        if user.role != UserRole.employee:
+            raise HTTPException(status_code=403, detail="Company admins can only delete employees")
     db.delete(user)
     db.commit()
     log_audit(db, current_user.id, "delete_user", f"user:{user_id}", request.client.host if request.client else None)

@@ -114,6 +114,16 @@ class UserUpdateRequest(BaseModel):
     gender: Optional[str] = None
 
 
+class UserAdminUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    phone_number: Optional[str] = None
+    gender: Optional[str] = None
+    is_active: Optional[bool] = None
+    role: Optional[UserRole] = None
+    company_id: Optional[int] = None
+
+
 class UserCreateRequest(BaseModel):
     email: EmailStr
     password: Optional[str] = Field(default=None, min_length=8)

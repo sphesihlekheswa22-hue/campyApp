@@ -53,6 +53,7 @@
           <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider hidden" id="company-col">Company</th>
           <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
           <th class="text-left py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider">Joined</th>
+          <th class="text-right py-4 px-5 text-xs font-medium text-slate-500 uppercase tracking-wider hidden" id="actions-col">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -120,6 +121,68 @@
     </form>
   </div>
 </div>
+
+<div id="edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60" onclick="closeEditModal()"></div>
+  <div class="relative bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-auto">
+    <div class="p-6 border-b border-slate-700/30 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/20">
+          <i data-lucide="user-cog" class="w-5 h-5 text-amber-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100">Edit User</h3>
+          <p class="text-xs text-slate-500" id="edit-modal-email">—</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeEditModal()" class="p-2 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="edit-form" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" name="user_id" id="edit-user-id">
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">First Name</label>
+        <input name="name" id="edit-name" class="search-premium" required>
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Last Name</label>
+        <input name="surname" id="edit-surname" class="search-premium" required>
+      </div>
+      <div class="space-y-1.5 md:col-span-2">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Phone</label>
+        <input name="phone_number" id="edit-phone" class="search-premium">
+      </div>
+      <div class="space-y-1.5 hidden" id="edit-role-field">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Role</label>
+        <select name="role" id="edit-role" class="search-premium appearance-none cursor-pointer">
+          <option value="employee">Employee</option>
+          <option value="company_admin">Company Admin</option>
+        </select>
+      </div>
+      <div class="space-y-1.5 hidden" id="edit-company-field">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Company</label>
+        <select name="company_id" id="edit-company" class="search-premium appearance-none cursor-pointer">
+          <option value="">No company</option>
+        </select>
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-medium text-slate-400 uppercase tracking-wider">Status</label>
+        <select name="is_active" id="edit-status" class="search-premium appearance-none cursor-pointer">
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+      <div class="md:col-span-2 pt-2 flex gap-3">
+        <button type="button" onclick="closeEditModal()" class="btn-premium btn-secondary-glass flex-1 py-3">Cancel</button>
+        <button type="submit" class="btn-premium btn-primary-glow flex-1 py-3">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          <span>Save Changes</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -142,7 +205,15 @@
       document.getElementById('company-field').classList.remove('hidden');
       document.getElementById('role-filter-wrap').classList.remove('hidden');
       document.getElementById('company-filter-wrap').classList.remove('hidden');
-    } else {
+      document.getElementById('edit-role-field').classList.remove('hidden');
+      document.getElementById('edit-company-field').classList.remove('hidden');
+    }
+    if (Auth.hasPermission('manage_users')) {
+      document.getElementById('actions-col').classList.remove('hidden');
+    }
+
+    const currentUserId = Number(Auth.getUserId());
+    if (!isOwner) {
       document.getElementById('add-btn-label').textContent = 'Add Employee';
       document.getElementById('modal-title').textContent = 'Add Employee';
       document.getElementById('modal-subtitle').textContent = 'Invite a team member to your company';
@@ -172,9 +243,11 @@
       companies = Utils.unwrapList(await API.get('/companies/'));
       const addSelect = document.getElementById('company-select');
       const filterSelect = document.getElementById('company-filter');
+      const editSelect = document.getElementById('edit-company');
       const options = companies.map((c) => `<option value="${c.id}">${c.company_name}</option>`).join('');
       addSelect.innerHTML = '<option value="">Select company…</option>' + options;
       filterSelect.innerHTML = '<option value="">All companies</option>' + options;
+      if (editSelect) editSelect.innerHTML = '<option value="">No company</option>' + options;
     }
 
     function companyName(id) {
@@ -182,12 +255,21 @@
       return c ? c.company_name : '-';
     }
 
+    function canManageUser(u) {
+      if (!Auth.hasPermission('manage_users')) return false;
+      if (u.id === currentUserId) return false;
+      if (u.role === 'platform_owner') return false;
+      if (!isOwner && u.role !== 'employee') return false;
+      return true;
+    }
+
     function renderUsers(list) {
       const tbody = document.querySelector('#users-table tbody');
+      const colSpan = isOwner ? 6 : (Auth.hasPermission('manage_users') ? 5 : 4);
       if (!list.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="${isOwner ? 5 : 4}" class="py-12 text-center">
+            <td colspan="${colSpan}" class="py-12 text-center">
               <p class="text-sm text-slate-500">No users found</p>
             </td>
           </tr>`;
@@ -198,6 +280,17 @@
         const initials = `${(u.name || 'U')[0]}${(u.surname || '')[0] || ''}`.toUpperCase();
         const statusClass = u.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
         const statusLabel = u.is_active ? 'Active' : 'Inactive';
+        const actions = canManageUser(u) ? `
+            <td class="py-4 px-5 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <button type="button" class="btn-premium btn-secondary-glass px-2.5 py-1.5 text-xs" onclick="openEditModal(${u.id})" title="Edit">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                </button>
+                <button type="button" class="btn-premium btn-secondary-glass px-2.5 py-1.5 text-xs text-red-400 hover:text-red-300" onclick="deleteUser(${u.id}, '${(u.name + ' ' + u.surname).replace(/'/g, "\\'")}')" title="Delete">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>` : (Auth.hasPermission('manage_users') ? '<td class="py-4 px-5"></td>' : '');
         return `
           <tr class="border-b border-slate-700/20 hover:bg-slate-800/40 transition-colors">
             <td class="py-4 px-5">
@@ -219,6 +312,7 @@
               <span class="badge-premium ${statusClass}">${statusLabel}</span>
             </td>
             <td class="py-4 px-5 text-sm text-slate-500">${Utils.formatDate(u.created_at)}</td>
+            ${actions}
           </tr>`;
       }).join('');
       Layout.refreshIcons();
@@ -236,7 +330,7 @@
         document.getElementById('filter-summary').textContent = 'Failed to load users';
         document.querySelector('#users-table tbody').innerHTML = `
           <tr>
-            <td colspan="${isOwner ? 5 : 4}" class="py-12 text-center text-sm text-red-400">${err.message || 'Failed to load users'}</td>
+            <td colspan="6" class="py-12 text-center text-sm text-red-400">${err.message || 'Failed to load users'}</td>
           </tr>`;
       }
     }
@@ -253,6 +347,73 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
     };
+
+    window.openEditModal = function (userId) {
+      const u = users.find((x) => x.id === userId);
+      if (!u) return;
+      document.getElementById('edit-user-id').value = u.id;
+      document.getElementById('edit-name').value = u.name || '';
+      document.getElementById('edit-surname').value = u.surname || '';
+      document.getElementById('edit-phone').value = u.phone_number || '';
+      document.getElementById('edit-status').value = u.is_active ? 'true' : 'false';
+      document.getElementById('edit-modal-email').textContent = u.email;
+      if (isOwner) {
+        document.getElementById('edit-role').value = u.role === 'company_admin' ? 'company_admin' : 'employee';
+        const editCompany = document.getElementById('edit-company');
+        editCompany.innerHTML = '<option value="">No company</option>' +
+          companies.map((c) => `<option value="${c.id}">${c.company_name}</option>`).join('');
+        editCompany.value = u.company_id || '';
+      }
+      const modal = document.getElementById('edit-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      Layout.refreshIcons();
+    };
+
+    window.closeEditModal = function () {
+      const modal = document.getElementById('edit-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.deleteUser = async function (userId, name) {
+      if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+      try {
+        await API.delete(`/users/${userId}`);
+        Layout.showToast('User deleted', 'success');
+        loadUsers();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to delete user', 'error');
+      }
+    };
+
+    document.getElementById('edit-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById('edit-user-id').value;
+      const body = {
+        name: document.getElementById('edit-name').value,
+        surname: document.getElementById('edit-surname').value,
+        phone_number: document.getElementById('edit-phone').value || null,
+        is_active: document.getElementById('edit-status').value === 'true',
+      };
+      if (isOwner) {
+        body.role = document.getElementById('edit-role').value;
+        const companyId = document.getElementById('edit-company').value;
+        body.company_id = companyId ? Number(companyId) : null;
+      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      try {
+        await API.put(`/users/${userId}`, body);
+        Layout.showToast('User updated', 'success');
+        closeEditModal();
+        loadUsers();
+      } catch (err) {
+        Layout.showToast(err.message || 'Failed to update user', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     const applyFilters = Utils.debounce(() => loadUsers(), 300);
     document.getElementById('search').addEventListener('input', applyFilters);
