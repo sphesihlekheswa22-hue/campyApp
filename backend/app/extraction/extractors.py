@@ -11,11 +11,14 @@ GOVERNANCE_KEYWORDS = {
 }
 
 FINANCIAL_METRICS = {
-    "Revenue": ["revenue", "turnover", "sales", "total income"],
-    "Profit": ["profit for the year", "profit attributable", "net income", "earnings", "profit after tax", "net profit"],
-    "Assets": ["total assets", "assets total"],
-    "Liabilities": ["total liabilities", "liabilities total"],
-    "Equity": ["total equity", "shareholders equity", "shareholders' equity", "total shareholders"],
+    "Revenue": ["revenue", "turnover", "sales", "total income", "total revenue", "group revenue"],
+    "Profit": [
+        "profit for the year", "profit attributable", "net income", "earnings", "profit after tax",
+        "net profit", "profit/(loss)", "loss for the year", "total comprehensive income",
+    ],
+    "Assets": ["total assets", "assets total", "total group assets"],
+    "Liabilities": ["total liabilities", "liabilities total", "total group liabilities"],
+    "Equity": ["total equity", "shareholders equity", "shareholders' equity", "total shareholders", "shareholders' funds"],
 }
 
 MONETARY_SUFFIX = {
@@ -57,17 +60,51 @@ def parse_monetary_value(raw: str, line_context: str = "") -> float | None:
     return round(value * multiplier, 2)
 
 
-def extract_text_from_pdf(file_path: str) -> str:
+def _extract_with_pdfplumber(file_path: str) -> str:
     text_parts = []
     try:
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
-                page_text = page.extract_text()
+                page_text = page.extract_text(x_tolerance=2, y_tolerance=2)
                 if page_text:
                     text_parts.append(page_text)
+                    continue
+                words = page.extract_words(x_tolerance=2, y_tolerance=2) or []
+                if words:
+                    lines: dict[int, list[str]] = {}
+                    for word in words:
+                        top = int(word.get("top", 0))
+                        lines.setdefault(top, []).append(word.get("text", ""))
+                    page_text = "\n".join(
+                        " ".join(lines[key]) for key in sorted(lines.keys())
+                    )
+                    if page_text.strip():
+                        text_parts.append(page_text)
     except Exception as e:
         print(f"[EXTRACTION] pdfplumber error: {e}")
-    text = "\n".join(text_parts)
+    return "\n".join(text_parts)
+
+
+def extract_text_with_pymupdf(file_path: str) -> str:
+    """Fallback text extraction — works well on many JSE PDFs when pdfplumber returns little."""
+    try:
+        import fitz
+        doc = fitz.open(file_path)
+        parts = [page.get_text("text") for page in doc]
+        doc.close()
+        return "\n".join(parts)
+    except Exception as e:
+        print(f"[EXTRACTION] pymupdf error: {e}")
+        return ""
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    text = _extract_with_pdfplumber(file_path)
+
+    if len(text.strip()) < 100:
+        pymupdf_text = extract_text_with_pymupdf(file_path)
+        if len(pymupdf_text.strip()) > len(text.strip()):
+            text = pymupdf_text
 
     if len(text.strip()) < 100:
         ocr_text = extract_text_with_ocr(file_path)
@@ -157,11 +194,62 @@ def _metric_from_line(line: str, financial_year: str) -> list[dict]:
 
 def extract_financials_from_text(text: str, financial_year: str) -> list[dict]:
     results = []
-    for line in text.split("\n"):
-        if len(line.strip()) < 4:
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    for line in lines:
+        if len(line) < 4:
             continue
         results.extend(_metric_from_line(line, financial_year))
+
+    # Multi-line: metric label on one line, value on the next
+    for i, line in enumerate(lines):
+        combined = line
+        if i + 1 < len(lines):
+            combined = f"{line} {lines[i + 1]}"
+        if i + 2 < len(lines):
+            combined_long = f"{line} {lines[i + 1]} {lines[i + 2]}"
+            results.extend(_metric_from_line(combined_long, financial_year))
+        results.extend(_metric_from_line(combined, financial_year))
+
+    results.extend(extract_financials_from_patterns(text, financial_year))
+    return _dedupe_financials(results)
+
+
+def extract_financials_from_patterns(text: str, financial_year: str) -> list[dict]:
+    """Regex pass for common JSE annual report phrasing."""
+    results = []
+    normalized = re.sub(r"\s+", " ", text.lower())
+    pattern_map = [
+        (r"(?:total\s+)?(?:group\s+)?revenue[^\d]{0,60}([\(\)\-\d,\.]+)", "Revenue"),
+        (r"turnover[^\d]{0,60}([\(\)\-\d,\.]+)", "Revenue"),
+        (r"(?:profit|loss)\s+for\s+the\s+year[^\d]{0,60}([\(\)\-\d,\.]+)", "Profit"),
+        (r"net\s+(?:profit|income)[^\d]{0,60}([\(\)\-\d,\.]+)", "Profit"),
+        (r"total\s+assets[^\d]{0,60}([\(\)\-\d,\.]+)", "Assets"),
+        (r"total\s+liabilities[^\d]{0,60}([\(\)\-\d,\.]+)", "Liabilities"),
+        (r"total\s+equity[^\d]{0,60}([\(\)\-\d,\.]+)", "Equity"),
+    ]
+    for pattern, metric_name in pattern_map:
+        for match in re.finditer(pattern, normalized, re.IGNORECASE):
+            value = parse_monetary_value(match.group(1), match.group(0))
+            if value is not None and abs(value) > 0:
+                results.append({
+                    "financial_year": financial_year,
+                    "metric_name": metric_name,
+                    "metric_value": abs(value),
+                    "category": "Financial Statements",
+                })
     return results
+
+
+def _dedupe_financials(items: list[dict]) -> list[dict]:
+    seen: set[tuple[str, str]] = set()
+    unique: list[dict] = []
+    for item in items:
+        key = (item["metric_name"], item["financial_year"])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(item)
+    return unique
 
 
 def extract_financials_from_tables(tables: list[Any], financial_year: str) -> list[dict]:
@@ -195,11 +283,12 @@ def extract_financials_from_tables(tables: list[Any], financial_year: str) -> li
 def extract_governance_narratives(text: str) -> list[dict]:
     results = []
     paragraphs = re.split(r"\n\s*\n", text)
+    min_para_len = 40 if len(text.strip()) < 5000 else 80
     for category, keywords in GOVERNANCE_KEYWORDS.items():
         best_match = ""
         best_score = 0.0
         for para in paragraphs:
-            if len(para.strip()) < 80:
+            if len(para.strip()) < min_para_len:
                 continue
             para_lower = para.lower()
             matches = sum(1 for kw in keywords if kw in para_lower)

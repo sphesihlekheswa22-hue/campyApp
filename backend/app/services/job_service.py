@@ -61,10 +61,12 @@ def _run_job(job: BackgroundJob) -> None:
     payload = json.loads(job.payload_json or "{}")
     if job.job_type == "extraction":
         from app.extraction.pipeline import run_extraction
-        run_extraction(
+        success, error = run_extraction(
             int(payload["report_id"]),
             payload.get("report_year"),
         )
+        if not success:
+            raise RuntimeError(error or "Extraction failed")
     elif job.job_type == "scheduled_report":
         from app.services.scheduled_report_service import send_scheduled_report
         send_scheduled_report(int(payload["schedule_id"]))

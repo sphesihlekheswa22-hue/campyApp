@@ -15,6 +15,8 @@ GOVERNANCE_CATEGORIES = [
     "Sustainability",
 ]
 
+FINANCIAL_METRICS = ["Revenue", "Profit", "Assets", "Liabilities", "Equity"]
+
 
 def extract_governance_with_llm(text: str) -> list[dict]:
     if not settings.openai_api_key or len(text.strip()) < 200:
@@ -68,4 +70,67 @@ def extract_governance_with_llm(text: str) -> list[dict]:
         return results
     except (urllib.error.HTTPError, KeyError, json.JSONDecodeError, ValueError) as e:
         print(f"[LLM EXTRACTION] Skipped: {e}")
+        return []
+
+
+def extract_financials_with_llm(text: str, financial_year: str) -> list[dict]:
+    """Optional fallback when rule-based extraction finds nothing."""
+    if not settings.openai_api_key or len(text.strip()) < 200:
+        return []
+
+    excerpt = text[:14000]
+    prompt = (
+        f"Extract financial metrics from this JSE annual report excerpt for year {financial_year}. "
+        "Return JSON object with key 'metrics' as array of objects: "
+        "metric_name (Revenue, Profit, Assets, Liabilities, or Equity), metric_value (number in ZAR, full amount not millions). "
+        "Only include metrics you are confident about.\n\n"
+        f"TEXT:\n{excerpt}"
+    )
+
+    payload = {
+        "model": settings.openai_model,
+        "messages": [
+            {"role": "system", "content": "You are a JSE financial analyst. Respond with valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+    }
+
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {settings.openai_api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        content = body["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
+        items = parsed.get("metrics") or parsed.get("items") or []
+        results = []
+        for item in items:
+            name = item.get("metric_name", "")
+            if name not in FINANCIAL_METRICS:
+                continue
+            try:
+                value = float(item.get("metric_value", 0))
+            except (TypeError, ValueError):
+                continue
+            if value <= 0:
+                continue
+            results.append({
+                "financial_year": financial_year,
+                "metric_name": name,
+                "metric_value": value,
+                "category": "Financial Statements (AI)",
+            })
+        return results
+    except (urllib.error.HTTPError, KeyError, json.JSONDecodeError, ValueError) as e:
+        print(f"[LLM FINANCIAL] Skipped: {e}")
         return []

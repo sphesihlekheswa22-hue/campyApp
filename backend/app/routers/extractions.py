@@ -3,10 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.auth.security import get_current_user, require_roles
 from app.database.session import get_db
-from app.extraction.pipeline import run_extraction
-from app.models import AnnualReport, ExtractedFinancial, GovernanceNarrative, ReportStatus, User, UserRole
+from app.extraction.pipeline import resolve_report_file_path, run_extraction
+from app.extraction.extractors import extract_text_from_pdf
+from app.models import AnnualReport, BackgroundJob, ExtractedFinancial, GovernanceNarrative, JobStatus, ReportStatus, User, UserRole
 from app.schemas import FinancialResponse, GovernanceResponse, ReportExtractionSummary, ReportResponse
 from app.services.job_service import enqueue_job
+from app.services.storage_service import storage
 
 router = APIRouter(prefix="/extractions", tags=["extractions"])
 
@@ -34,7 +36,31 @@ def get_extraction_summary(
     issues: list[str] = []
 
     if report.status == ReportStatus.failed:
-        issues.append("Extraction failed — the PDF may be missing, scanned, or unreadable")
+        if not storage.exists(report.file_path):
+            issues.append("PDF file not found in storage — re-upload the report (configure S3/R2 on Render)")
+        else:
+            last_job = (
+                db.query(BackgroundJob)
+                .filter(BackgroundJob.job_type == "extraction")
+                .filter(BackgroundJob.payload_json.contains(f'"report_id": {report_id}'))
+                .filter(BackgroundJob.error_message.isnot(None))
+                .order_by(BackgroundJob.completed_at.desc())
+                .first()
+            )
+            if last_job and last_job.error_message:
+                issues.append(last_job.error_message)
+            else:
+                try:
+                    path = resolve_report_file_path(report.file_path)
+                    char_count = len(extract_text_from_pdf(path).strip())
+                    if char_count < 50:
+                        issues.append("PDF has little or no readable text — it may be scanned. Enable OCR_ENABLED or upload a text-based PDF")
+                    else:
+                        issues.append(
+                            f"Extraction failed — {char_count:,} characters were read but no financial/governance patterns matched. Click Retry or set OPENAI_API_KEY for AI-assisted extraction"
+                        )
+                except Exception as exc:
+                    issues.append(f"Could not read PDF: {exc}")
     elif report.status in (ReportStatus.pending, ReportStatus.processing):
         issues.append("Extraction is still in progress")
     if report.status == ReportStatus.complete and not financials:
