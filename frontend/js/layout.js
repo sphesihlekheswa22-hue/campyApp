@@ -293,6 +293,13 @@ const Layout = {
   },
 
   openSettings() {
+    this.openProfile();
+  },
+
+  openProfile(event) {
+    if (event) event.preventDefault();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar?.classList.contains('mobile-open')) this.toggleMobile();
     window.location.href = '/settings/index.html';
   },
 

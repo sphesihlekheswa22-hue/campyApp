@@ -330,6 +330,11 @@
       padding: 12px;
     }
 
+    .sidebar.collapsed #sidebar-profile {
+      justify-content: center;
+      padding: 10px;
+    }
+
     /* Mobile overlay */
     .mobile-overlay {
       opacity: 0;
@@ -499,6 +504,11 @@
         justify-content: flex-start;
         padding: 12px 16px;
       }
+
+      .sidebar.collapsed #sidebar-profile {
+        justify-content: center;
+        padding: 10px;
+      }
     }
 
     /* Print styles */
@@ -562,7 +572,7 @@
       <!-- Bottom Section -->
       <div class="p-4 border-t border-slate-700/30">
         <!-- User Mini Profile -->
-        <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30 hover:border-slate-600/30 transition-colors cursor-pointer group">
+        <a href="/settings/index.html" id="sidebar-profile" class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30 hover:border-slate-600/30 hover:bg-slate-800/70 transition-colors cursor-pointer group no-underline" title="Profile & settings" onclick="Layout.openProfile(event)">
           <div class="relative flex-shrink-0">
             <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/20">
               <span id="user-initials">U</span>
@@ -574,7 +584,7 @@
             <p class="text-xs text-slate-500 truncate" id="user-email">user@example.com</p>
           </div>
           <i data-lucide="chevron-right" class="sidebar-text w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors"></i>
-        </div>
+        </a>
 
         <!-- Version -->
         <div class="sidebar-text mt-3 px-3 flex items-center justify-between">
@@ -667,7 +677,7 @@
   <script src="/js/api.js?v=4"></script>
   <script src="/js/auth.js?v=4"></script>
   <script src="/js/utils.js?v=4"></script>
-  <script src="/js/layout.js?v=4"></script>
+  <script src="/js/layout.js?v=5"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
