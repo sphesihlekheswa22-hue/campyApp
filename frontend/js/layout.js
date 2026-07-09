@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
     e.preventDefault();
-    const searchInput = document.getElementById('global-search') || document.getElementById('sidebar-search');
+    const searchInput = document.getElementById('sidebar-search');
     if (searchInput) searchInput.focus();
   }
   if (e.key === 'Escape') {
