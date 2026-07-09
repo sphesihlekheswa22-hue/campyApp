@@ -185,8 +185,11 @@
   let trendChart = null;
   let healthGauge = null;
   let governanceRadar = null;
+  let dashboardLoading = false;
 
   async function load() {
+    if (dashboardLoading) return;
+    dashboardLoading = true;
     try {
       const user = await API.get('/users/me');
       if (!user.company_id) {
@@ -588,8 +591,7 @@
         }
       });
 
-      // Trend Indicators
-      const trends = data.trends || {};
+      // Trend Indicators (reuses trends from KPI section above)
       document.getElementById('trend-indicators').innerHTML = `
         <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30">
           <div class="flex items-center gap-3">
@@ -648,21 +650,39 @@
           </span>
         </div>`;
 
-      // Re-initialize Lucide icons
-      if (typeof lucide !== 'undefined') lucide.createIcons();
+      Layout.refreshIcons();
 
     } catch (e) { 
       console.error(e);
-      Toast.show('error', 'Failed to load dashboard data');
+      const msg = e.message || 'Failed to load dashboard data';
+      Layout.showToast(msg, 'error');
+      document.getElementById('company-name').textContent = 'Unable to load';
+      document.getElementById('company-reg').textContent = '—';
+      document.getElementById('company-sector').textContent = '—';
+      document.getElementById('kpi-cards').innerHTML = `
+        <div class="lg:col-span-4 card-premium p-8 text-center col-span-full">
+          <i data-lucide="alert-circle" class="w-10 h-10 text-red-400 mx-auto mb-3"></i>
+          <p class="text-sm text-red-400">${msg}</p>
+          <button type="button" class="btn-premium btn-secondary-glass mt-4 text-sm" onclick="load()">Retry</button>
+        </div>`;
+      document.getElementById('scores').innerHTML = `<p class="text-sm text-slate-500 py-4">Unable to load scores.</p>`;
+      document.getElementById('risk-alert').innerHTML = `<p class="text-sm text-slate-500 py-4">Unable to load risk data.</p>`;
+      document.getElementById('recent-reports').innerHTML = `<p class="text-sm text-slate-500 py-4">Unable to load reports.</p>`;
+      document.getElementById('trend-indicators').innerHTML = `<p class="text-sm text-slate-500 py-4">Unable to load trends.</p>`;
+      Layout.refreshIcons();
+    } finally {
+      dashboardLoading = false;
     }
   }
 
+  window.load = load;
+
   function exportReport() {
     API.get('/users/me').then((u) => {
-      if (!u.company_id) return Toast.show('error', 'No company assigned');
+      if (!u.company_id) return Layout.showToast('No company assigned', 'error');
       API.download(`/analytics/export/pdf?company_id=${u.company_id}`, `analytics_${u.company_id}.pdf`);
-      Toast.show('success', 'Report download started');
-    }).catch(() => Toast.show('error', 'Export failed'));
+      Layout.showToast('Report download started', 'success');
+    }).catch(() => Layout.showToast('Export failed', 'error'));
   }
 
   function viewAllReports() {
