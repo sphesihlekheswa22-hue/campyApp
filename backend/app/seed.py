@@ -390,10 +390,15 @@ def ensure_seed_pdf_files(db):
     db.commit()
 
 
-def seed(reset: bool = False):
+def seed(reset: bool = False, owner_only: bool = False):
     init_db()
     db = SessionLocal()
     try:
+        if owner_only:
+            ensure_platform_owner(db)
+            print("[SEED] Platform owner ensured.")
+            return
+
         if db.query(Company).count() > 0 and not reset:
             ensure_platform_owner(db)
             ensure_seed_pdf_files(db)
@@ -429,5 +434,10 @@ if __name__ == "__main__":
         action="store_true",
         help="Delete all data and reseed from scratch",
     )
+    parser.add_argument(
+        "--owner-only",
+        action="store_true",
+        help="Ensure platform owner exists without demo data (production)",
+    )
     args = parser.parse_args()
-    seed(reset=args.reset)
+    seed(reset=args.reset, owner_only=args.owner_only)

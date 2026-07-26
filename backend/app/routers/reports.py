@@ -55,7 +55,7 @@ async def upload_report(
     report_year: Optional[str] = Query(None, description="Optional FY tag e.g. 2024"),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.company_admin])),
+    current_user: User = Depends(require_roles([UserRole.platform_owner, UserRole.company_admin])),
 ):
     if not _can_access_company(current_user, company_id):
         raise HTTPException(status_code=403, detail="Insufficient permissions")

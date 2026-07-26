@@ -69,7 +69,7 @@ Run migrations on deploy: `alembic upgrade head` (in `start.sh`)
 
 ## User Roles
 
-1. **Platform Owner** — Companies, users, view all data, audit, health (no report upload)
+1. **Platform Owner** — Companies, users, upload reports for any company, view all data, audit, health
 2. **Company Admin** — Upload reports, team, analytics, scheduled emails
 3. **Employee** — Read-only company data
 

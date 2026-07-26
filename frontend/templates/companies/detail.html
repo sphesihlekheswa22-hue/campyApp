@@ -20,8 +20,17 @@
     </div>
   </div>
 
+  <!-- Workflow status -->
+  <div id="workflow-banner" class="hidden"></div>
+
+  <!-- Quick actions -->
+  <div id="quick-actions" class="flex flex-wrap gap-3"></div>
+
+  <!-- Insights -->
+  <div id="insights-panel" class="hidden card-premium p-6"></div>
+
   <!-- Analytics KPI Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="analytics-summary">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="analytics-summary">
     <!-- Loading shimmer cards -->
     <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px]">
       <div class="h-4 w-20 bg-slate-700/50 rounded shimmer mb-3"></div>
@@ -34,6 +43,65 @@
     <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px]">
       <div class="h-4 w-20 bg-slate-700/50 rounded shimmer mb-3"></div>
       <div class="h-8 w-24 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+    <div class="card-premium p-6 flex flex-col items-center justify-center min-h-[140px]">
+      <div class="h-4 w-20 bg-slate-700/50 rounded shimmer mb-3"></div>
+      <div class="h-8 w-16 bg-slate-700/50 rounded shimmer"></div>
+    </div>
+  </div>
+
+  <!-- Compliance gaps -->
+  <div class="card-premium overflow-hidden hidden" id="compliance-section">
+    <div class="flex items-center justify-between p-6 border-b border-slate-700/30">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center border border-emerald-500/20">
+          <i data-lucide="clipboard-check" class="w-5 h-5 text-emerald-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100">Compliance Gaps</h3>
+          <p class="text-xs text-slate-500 mt-0.5">King IV &amp; JSE principles needing attention</p>
+        </div>
+      </div>
+      <a href="/governance/index.html" id="compliance-link" class="text-xs text-blue-400 hover:text-blue-300 transition-colors">Full checklist →</a>
+    </div>
+    <div id="compliance-gaps" class="p-6 space-y-2"></div>
+  </div>
+
+  <!-- Upload (company admins) -->
+  <div id="upload-section" class="card-premium p-6 hidden">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-blue-500/20">
+        <i data-lucide="upload" class="w-5 h-5 text-blue-400"></i>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-100">Upload Annual Report</h3>
+        <p class="text-xs text-slate-500">PDF only — extraction and analytics run automatically</p>
+      </div>
+    </div>
+    <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+      <div class="relative w-full lg:w-48">
+        <i data-lucide="calendar" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+        <select id="report-year" class="search-premium pl-10 appearance-none cursor-pointer w-full">
+          <option value="">Auto-detect year</option>
+          <option value="2025">FY2025</option>
+          <option value="2024">FY2024</option>
+          <option value="2023">FY2023</option>
+          <option value="2022">FY2022</option>
+        </select>
+      </div>
+      <div class="relative w-full lg:flex-1">
+        <input type="file" id="file-input" accept=".pdf" class="search-premium w-full file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-blue-500/20 file:text-blue-300 file:text-sm">
+      </div>
+      <button id="upload-btn" class="btn-premium btn-primary-glow whitespace-nowrap">
+        <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+        <span>Upload PDF</span>
+      </button>
+    </div>
+    <div class="mt-4 hidden" id="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-bar-fill bg-blue-500" id="progress-fill" style="width:0%"></div>
+      </div>
+      <p class="text-sm text-slate-400 mt-2" id="progress-text">Uploading… 0%</p>
     </div>
   </div>
 
@@ -121,6 +189,324 @@
   }
   if (!await Auth.guardCompanyAccess(id)) return;
 
+  const canUpload = Auth.hasPermission('upload_reports');
+  const canRunAnalysis = Auth.hasPermission('run_analytics');
+  const canRetry = Auth.hasPermission('retry_extraction');
+  const govLink = `/governance/index.html${Utils.buildQuery({ company_id: id })}`;
+  const analyticsLink = `/analytics/index.html${Utils.buildQuery({ company: id })}`;
+
+  document.getElementById('compliance-link').href = govLink;
+  document.querySelector('#governance-section a[href="/governance/index.html"]').href = govLink;
+
+  if (canUpload) {
+    document.getElementById('upload-section').classList.remove('hidden');
+  }
+
+  function renderQuickActions() {
+    const actions = document.getElementById('quick-actions');
+    const buttons = [];
+    if (canUpload) {
+      buttons.push(`<button type="button" onclick="document.getElementById('upload-section').scrollIntoView({behavior:'smooth'})" class="btn-premium btn-primary-glow text-sm">
+        <i data-lucide="upload" class="w-4 h-4"></i><span>Upload Report</span></button>`);
+    }
+    if (canRunAnalysis) {
+      buttons.push(`<button type="button" id="run-analysis-btn" class="btn-premium btn-secondary-glass text-sm">
+        <i data-lucide="play" class="w-4 h-4"></i><span>Run Analysis</span></button>`);
+    }
+    buttons.push(`<a href="${analyticsLink}" class="btn-premium btn-secondary-glass text-sm">
+      <i data-lucide="trending-up" class="w-4 h-4"></i><span>Full Analytics</span></a>`);
+    buttons.push(`<a href="${govLink}" class="btn-premium btn-secondary-glass text-sm">
+      <i data-lucide="shield" class="w-4 h-4"></i><span>Compliance</span></a>`);
+    actions.innerHTML = buttons.join('');
+    Layout.refreshIcons();
+    document.getElementById('run-analysis-btn')?.addEventListener('click', runAnalysis);
+  }
+
+  async function runAnalysis() {
+    const btn = document.getElementById('run-analysis-btn');
+    if (btn) btn.disabled = true;
+    try {
+      await API.post(`/analytics/company/${id}/run`);
+      Layout.showToast('Analysis completed', 'success');
+      load();
+    } catch (err) {
+      Layout.showToast(err.message || 'Analysis failed', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function renderWorkflowBanner(reports) {
+    const banner = document.getElementById('workflow-banner');
+    const processing = reports.filter(r => ['pending', 'processing'].includes(r.status)).length;
+    const failed = reports.filter(r => r.status === 'failed').length;
+    const complete = reports.filter(r => r.status === 'complete').length;
+
+    if (!reports.length) {
+      banner.className = 'card-premium p-4 border border-blue-500/20 bg-blue-500/5';
+      banner.innerHTML = `
+        <div class="flex items-start gap-3">
+          <i data-lucide="route" class="w-5 h-5 text-blue-400 mt-0.5"></i>
+          <div>
+            <p class="text-sm font-medium text-slate-200">Get started</p>
+            <p class="text-xs text-slate-400 mt-1">Upload your first annual report PDF to begin extraction, scoring, and compliance analysis.</p>
+          </div>
+        </div>`;
+      Layout.refreshIcons();
+      return;
+    }
+
+    if (!processing && !failed) {
+      banner.className = 'hidden';
+      banner.innerHTML = '';
+      return;
+    }
+
+    banner.className = 'card-premium p-4 border border-amber-500/20 bg-amber-500/5';
+    const items = [];
+    if (processing) items.push(`${processing} report${processing !== 1 ? 's' : ''} processing`);
+    if (failed) items.push(`${failed} failed — review and retry`);
+    banner.innerHTML = `
+      <div class="flex items-start gap-3">
+        <i data-lucide="loader" class="w-5 h-5 text-amber-400 mt-0.5"></i>
+        <div>
+          <p class="text-sm font-medium text-slate-200">Workflow in progress</p>
+          <p class="text-xs text-slate-400 mt-1">${items.join(' · ')}${complete ? ` · ${complete} complete` : ''}</p>
+        </div>
+      </div>`;
+    Layout.refreshIcons();
+  }
+
+  function renderInsights(analytics) {
+    const panel = document.getElementById('insights-panel');
+    const factors = analytics.risk_factors || [];
+    if (!factors.length && !analytics.risk_classification) {
+      panel.className = 'hidden card-premium p-6';
+      return;
+    }
+    panel.className = 'card-premium p-6';
+    panel.innerHTML = `
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+          <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-100">Key Insights</h3>
+          <p class="text-xs text-slate-500">Risk assessment from latest data</p>
+        </div>
+        <div class="ml-auto">${Utils.riskBadge(analytics.risk_classification)}</div>
+      </div>
+      <ul class="space-y-2">
+        ${factors.map(f => `<li class="flex items-start gap-2 text-sm text-slate-300">
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0"></i><span>${f}</span></li>`).join('')}
+      </ul>`;
+    Layout.refreshIcons();
+  }
+
+  function renderAnalyticsKPIs(analytics) {
+    document.getElementById('analytics-summary').innerHTML = `
+      <div class="card-premium p-6 relative overflow-hidden group">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <i data-lucide="activity" class="w-4 h-4 text-blue-400"></i>
+            </div>
+            <span class="text-slate-400 text-sm font-medium">Overall Score</span>
+          </div>
+          <div class="flex items-end gap-2">
+            <span class="text-4xl font-bold text-slate-100">${analytics.overall_score || 0}</span>
+            <span class="text-sm text-slate-500 mb-1">/ 100</span>
+          </div>
+          <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" style="width: ${analytics.overall_score || 0}%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-premium p-6 relative overflow-hidden group">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <span class="text-slate-400 text-sm font-medium">Financial Health</span>
+          </div>
+          <div class="flex items-end gap-2">
+            <span class="text-4xl font-bold text-slate-100">${analytics.financial_health_score || 0}</span>
+            <span class="text-sm text-slate-500 mb-1">/ 100</span>
+          </div>
+          <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" style="width: ${analytics.financial_health_score || 0}%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-premium p-6 relative overflow-hidden group">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <i data-lucide="shield" class="w-4 h-4 text-purple-400"></i>
+            </div>
+            <span class="text-slate-400 text-sm font-medium">Governance</span>
+          </div>
+          <div class="flex items-end gap-2">
+            <span class="text-4xl font-bold text-slate-100">${analytics.governance_score || 0}</span>
+            <span class="text-sm text-slate-500 mb-1">/ 100</span>
+          </div>
+          <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-purple-500 to-violet-400 rounded-full" style="width: ${analytics.governance_score || 0}%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-premium p-6 relative overflow-hidden group">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+            </div>
+            <span class="text-slate-400 text-sm font-medium">Risk Level</span>
+          </div>
+          <div class="flex items-center gap-3">${Utils.riskBadge(analytics.risk_classification)}</div>
+          <p class="mt-3 text-xs text-slate-500">Combined financial &amp; governance assessment</p>
+        </div>
+      </div>`;
+    Layout.refreshIcons();
+  }
+
+  function renderCompliance(compliance) {
+    const section = document.getElementById('compliance-section');
+    const gaps = (compliance.items || []).filter(i => i.status !== 'met').slice(0, 6);
+    if (!gaps.length) {
+      section.classList.add('hidden');
+      return;
+    }
+    section.classList.remove('hidden');
+    const statusCls = { partial: 'text-amber-400', not_met: 'text-red-400' };
+    document.getElementById('compliance-gaps').innerHTML = gaps.map(item => `
+      <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/30 border border-slate-700/30">
+        <div class="min-w-0">
+          <p class="text-sm text-slate-200 truncate">${item.principle}</p>
+          <p class="text-xs text-slate-500">${item.framework}</p>
+        </div>
+        <span class="text-xs font-medium ${statusCls[item.status] || 'text-slate-400'} ml-3 flex-shrink-0">${item.status === 'partial' ? 'Partial' : 'Not met'}</span>
+      </div>`).join('');
+  }
+
+  function renderGovernance(analytics) {
+    const metrics = analytics.governance_metrics || {};
+    const cats = Object.entries(metrics);
+    const container = document.getElementById('governance-categories');
+    if (!cats.length) {
+      container.innerHTML = `<div class="sm:col-span-2 flex flex-col items-center justify-center py-8 text-center">
+        <i data-lucide="shield-off" class="w-8 h-8 text-slate-600 mb-2"></i>
+        <p class="text-sm text-slate-500">No governance data — upload and extract a report first</p></div>`;
+    } else {
+      container.innerHTML = cats.map(([cat, score]) => `
+        <div class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-slate-200">${cat}</span>
+            <span class="text-sm font-bold text-purple-400">${score}</span>
+          </div>
+          <div class="h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-purple-500 to-violet-400 rounded-full" style="width:${Math.min(100, score)}%"></div>
+          </div>
+        </div>`).join('');
+    }
+    Layout.refreshIcons();
+  }
+
+  async function retryExtraction(reportId) {
+    try {
+      await API.post(`/extractions/retry/${reportId}`);
+      Layout.showToast('Extraction queued', 'success');
+      load();
+    } catch (err) {
+      Layout.showToast(err.message || 'Retry failed', 'error');
+    }
+  }
+  window.retryExtraction = retryExtraction;
+
+  function renderReports(reports) {
+    const reportsCount = document.getElementById('reports-count');
+    if (reportsCount) {
+      reportsCount.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
+    }
+    renderWorkflowBanner(reports);
+
+    if (!reports.length) {
+      document.getElementById('reports-list').innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
+            <i data-lucide="file-x" class="w-8 h-8 text-slate-600"></i>
+          </div>
+          <h4 class="text-sm font-medium text-slate-400">No reports yet</h4>
+          <p class="text-xs text-slate-600 mt-1">${canUpload ? 'Use the upload section above to add your first PDF' : 'Ask your admin to upload an annual report'}</p>
+        </div>`;
+      Layout.refreshIcons();
+      return;
+    }
+
+    document.getElementById('reports-list').innerHTML = reports.map(r => {
+      const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
+      const retryBtn = canRetry && r.status === 'failed'
+        ? `<button type="button" class="btn-premium btn-secondary-glass px-2 py-1 text-xs" onclick="retryExtraction(${r.id})">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i></button>` : '';
+      return `<div class="flex items-center justify-between py-4 px-6 hover:bg-slate-800/30 transition-colors group">
+        <div class="flex items-center gap-4 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center border border-blue-500/10 flex-shrink-0">
+            <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-slate-200 truncate">${filename}</p>
+            <p class="text-xs text-slate-500 mt-0.5">Report #${r.id} · ${Utils.formatDate(r.upload_date)}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          ${Utils.statusBadge(r.status)}
+          ${retryBtn}
+          <button type="button" class="btn-premium btn-secondary-glass px-2 py-1 text-xs" onclick="API.download('/reports/${r.id}/download', 'report_${r.id}.pdf').catch(e => Layout.showToast(e.message, 'error'))">
+            <i data-lucide="download" class="w-3 h-3"></i></button>
+          <a href="/reports/detail.html?id=${r.id}" class="btn-premium btn-secondary-glass px-2 py-1 text-xs">
+            <i data-lucide="eye" class="w-3 h-3"></i></a>
+        </div>
+      </div>`;
+    }).join('');
+    Layout.refreshIcons();
+  }
+
+  document.getElementById('upload-btn')?.addEventListener('click', async () => {
+    const file = document.getElementById('file-input').files[0];
+    if (!file) {
+      Layout.showToast('Select a PDF file', 'warning');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('file', file);
+    document.getElementById('progress-wrap').classList.remove('hidden');
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    try {
+      const year = document.getElementById('report-year')?.value || '';
+      const yearQ = year ? `&report_year=${encodeURIComponent(year)}` : '';
+      await API.uploadWithProgress(`/reports/upload?company_id=${id}${yearQ}`, fd, (pct) => {
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-text').textContent = `Uploading… ${pct}%`;
+      });
+      document.getElementById('file-input').value = '';
+      document.getElementById('progress-wrap').classList.add('hidden');
+      Layout.showToast('Report uploaded — extraction started', 'success');
+      load();
+    } catch (err) {
+      Layout.showToast(err.message || 'Upload failed', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  renderQuickActions();
+
   async function load() {
     try {
       const company = await API.get(`/companies/${id}`);
@@ -199,71 +585,25 @@
       return;
     }
 
-    // Analytics Summary with premium KPI cards
+    // Analytics, compliance, governance, reports
+    let analytics = null;
     try {
-      const analytics = await API.get(`/analytics/company/${id}`);
-      document.getElementById('analytics-summary').innerHTML = `
-        <!-- Overall Score -->
-        <div class="card-premium p-6 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-          <div class="relative z-10">
-            <div class="flex items-center gap-2 mb-4">
-              <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <i data-lucide="activity" class="w-4 h-4 text-blue-400"></i>
-              </div>
-              <span class="text-slate-400 text-sm font-medium">Overall Score</span>
-            </div>
-            <div class="flex items-end gap-2">
-              <span class="text-4xl font-bold text-slate-100">${analytics.overall_score || 0}</span>
-              <span class="text-sm text-slate-500 mb-1">/ 100</span>
-            </div>
-            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-1000" style="width: ${(analytics.overall_score || 0)}%"></div>
-            </div>
-          </div>
-        </div>
+      const [analyticsRes, complianceRes, reportsRes] = await Promise.all([
+        API.get(`/analytics/company/${id}`),
+        API.get(`/governance/compliance${Utils.buildQuery({ company_id: id })}`),
+        API.get(`/reports/${Utils.buildQuery({ company_id: id })}`),
+      ]);
+      analytics = analyticsRes;
+      const reports = Utils.unwrapList(reportsRes);
 
-        <!-- Financial Health -->
-        <div class="card-premium p-6 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-          <div class="relative z-10">
-            <div class="flex items-center gap-2 mb-4">
-              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
-              </div>
-              <span class="text-slate-400 text-sm font-medium">Financial Health</span>
-            </div>
-            <div class="flex items-end gap-2">
-              <span class="text-4xl font-bold text-slate-100">${analytics.financial_health_score || 0}</span>
-              <span class="text-sm text-slate-500 mb-1">/ 100</span>
-            </div>
-            <div class="mt-3 h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000" style="width: ${(analytics.financial_health_score || 0)}%"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Risk Classification -->
-        <div class="card-premium p-6 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-          <div class="relative z-10">
-            <div class="flex items-center gap-2 mb-4">
-              <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
-              </div>
-              <span class="text-slate-400 text-sm font-medium">Risk Level</span>
-            </div>
-            <div class="flex items-center gap-3">
-              ${Utils.riskBadge(analytics.risk_classification)}
-            </div>
-            <p class="mt-3 text-xs text-slate-500">Based on latest financial analysis</p>
-          </div>
-        </div>
-      `;
-      Layout.refreshIcons();
+      renderInsights(analytics);
+      renderAnalyticsKPIs(analytics);
+      renderCompliance(complianceRes);
+      renderGovernance(analytics);
+      renderReports(reports);
     } catch {
       document.getElementById('analytics-summary').innerHTML = `
-        <div class="md:col-span-3 card-premium p-8 flex flex-col items-center text-center">
+        <div class="lg:col-span-4 card-premium p-8 flex flex-col items-center text-center">
           <div class="w-12 h-12 rounded-xl bg-slate-700/30 flex items-center justify-center mb-3">
             <i data-lucide="bar-chart-2" class="w-6 h-6 text-slate-500"></i>
           </div>
@@ -271,107 +611,20 @@
           <ol class="text-xs text-slate-500 text-left space-y-1 list-decimal list-inside max-w-xs">
             <li>Upload an annual report PDF</li>
             <li>Wait for extraction to complete</li>
-            <li>Scores appear here automatically</li>
+            <li>Scores and compliance appear here automatically</li>
           </ol>
         </div>`;
-      Layout.refreshIcons();
-    }
+      document.getElementById('insights-panel').className = 'hidden card-premium p-6';
 
-    // Governance categories on company profile
-    try {
-      const analytics = await API.get(`/analytics/company/${id}`);
-      const metrics = analytics.governance_metrics || {};
-      const cats = Object.entries(metrics);
-      const container = document.getElementById('governance-categories');
-
-      if (!cats.length) {
-        container.innerHTML = `
-          <div class="sm:col-span-2 flex flex-col items-center justify-center py-8 text-center">
-            <i data-lucide="shield-off" class="w-8 h-8 text-slate-600 mb-2"></i>
-            <p class="text-sm text-slate-500">No governance data — upload and extract a report first</p>
-          </div>`;
-      } else {
-        container.innerHTML = cats.map(([cat, score]) => `
-          <div class="p-4 rounded-xl bg-slate-800/30 border border-slate-700/30">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-slate-200">${cat}</span>
-              <span class="text-sm font-bold text-purple-400">${score}</span>
-            </div>
-            <div class="h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-purple-500 to-violet-400 rounded-full" style="width:${Math.min(100, score)}%"></div>
-            </div>
-          </div>`).join('');
-      }
-      Layout.refreshIcons();
-    } catch {
-      document.getElementById('governance-categories').innerHTML = `
-        <div class="sm:col-span-2 text-center py-6 text-sm text-slate-500">Governance data unavailable</div>`;
-    }
-
-    // Reports List with premium styling
-    try {
-      const reports = Utils.unwrapList(await API.get(`/reports/?company_id=${id}`));
-      const reportsCount = document.getElementById('reports-count');
-
-      if (reportsCount) {
-        reportsCount.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
-      }
-
-      if (reports.length === 0) {
+      try {
+        const reports = Utils.unwrapList(await API.get(`/reports/${Utils.buildQuery({ company_id: id })}`));
+        renderReports(reports);
+      } catch {
         document.getElementById('reports-list').innerHTML = `
           <div class="flex flex-col items-center justify-center py-12 text-center">
-            <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
-              <i data-lucide="file-x" class="w-8 h-8 text-slate-600"></i>
-            </div>
-            <h4 class="text-sm font-medium text-slate-400">No reports yet</h4>
-            <p class="text-xs text-slate-600 mt-1">Upload a PDF to start extraction and analytics</p>
-            <ol class="text-xs text-slate-500 text-left mt-3 space-y-1 list-decimal list-inside max-w-xs mx-auto">
-              <li>Go to Reports and upload a PDF</li>
-              <li>Extraction runs automatically</li>
-              <li>View results on this page and Analytics</li>
-            </ol>
-          </div>
-        `;
-      } else {
-        document.getElementById('reports-list').innerHTML = reports.map((r, index) => {
-          const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
-          return `<div class="flex items-center justify-between py-4 px-6 hover:bg-slate-800/30 transition-colors group">
-            <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center border border-blue-500/10 group-hover:border-blue-500/30 transition-colors">
-                <i data-lucide="file-text" class="w-5 h-5 text-blue-400"></i>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-slate-200 group-hover:text-blue-400 transition-colors">${filename}</p>
-                <p class="text-xs text-slate-500 mt-0.5">Report #${r.id}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-4">
-              ${Utils.statusBadge(r.status)}
-              <span class="text-xs text-slate-500 flex items-center gap-1.5">
-                <i data-lucide="calendar" class="w-3 h-3"></i>
-                ${Utils.formatDate(r.upload_date)}
-              </span>
-              <button class="btn-premium btn-secondary-glass px-2 py-1 text-xs" onclick="API.download('/reports/${r.id}/download', 'report_${r.id}.pdf').catch(e => Layout.showToast(e.message, 'error'))">
-                <i data-lucide="download" class="w-3 h-3"></i>
-              </button>
-              <a href="/reports/detail.html?id=${r.id}" class="btn-premium btn-secondary-glass px-2 py-1 text-xs">
-                <i data-lucide="eye" class="w-3 h-3"></i>
-              </a>
-            </div>
+            <p class="text-sm text-slate-400">Failed to load reports</p>
           </div>`;
-        }).join('');
       }
-      Layout.refreshIcons();
-    } catch {
-      document.getElementById('reports-list').innerHTML = `
-        <div class="flex flex-col items-center justify-center py-12 text-center">
-          <div class="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
-            <i data-lucide="alert-circle" class="w-8 h-8 text-red-400"></i>
-          </div>
-          <h4 class="text-sm font-medium text-slate-400">Failed to load reports</h4>
-          <p class="text-xs text-slate-600 mt-1">Please try again later</p>
-        </div>
-      `;
       Layout.refreshIcons();
     }
   }

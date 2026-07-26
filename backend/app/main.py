@@ -82,9 +82,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JSE Analytics Platform", version="1.0.0", lifespan=lifespan)
 
+
+def _cors_origins() -> list[str]:
+    if settings.app_env == "development":
+        return ["*"]
+    origin = settings.app_url.rstrip("/")
+    return [origin] if origin else []
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -132,7 +140,36 @@ if FRONTEND_DIR.exists():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    from sqlalchemy import text
+
+    from app.database.session import SessionLocal
+    from app.services.storage_service import storage
+
+    checks: dict[str, str] = {}
+    healthy = True
+
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        checks["database"] = f"error: {exc}"
+        healthy = False
+    finally:
+        db.close()
+
+    try:
+        storage.check_connection()
+        checks["storage"] = "ok"
+    except Exception as exc:
+        checks["storage"] = f"error: {exc}"
+        healthy = False
+
+    return {
+        "status": "ok" if healthy else "degraded",
+        "env": settings.app_env,
+        "checks": checks,
+    }
 
 
 def resolve_template(full_path: str) -> str | None:

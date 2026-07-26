@@ -17,7 +17,7 @@ const Auth = {
 
   PERMISSIONS: {
     platform_owner: [
-      'export_analytics', 'run_analytics', 'manage_companies',
+      'upload_reports', 'export_analytics', 'run_analytics', 'manage_companies',
       'view_audit', 'company_comparison', 'retry_extraction', 'create_company', 'manage_users',
     ],
     company_admin: ['upload_reports', 'export_analytics', 'run_analytics', 'retry_extraction', 'manage_users'],

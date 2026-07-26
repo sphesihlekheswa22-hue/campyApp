@@ -77,6 +77,15 @@ class StorageService:
                 return False
         return os.path.exists(os.path.join(settings.upload_dir, normalized))
 
+    def check_connection(self) -> None:
+        """Verify storage is reachable and writable."""
+        if self.backend == "s3" and settings.s3_bucket:
+            self._get_s3().head_bucket(Bucket=settings.s3_bucket)
+            return
+        os.makedirs(settings.upload_dir, exist_ok=True)
+        if not os.access(settings.upload_dir, os.W_OK):
+            raise OSError(f"Upload directory not writable: {settings.upload_dir}")
+
     def resolve_local_path(self, key: str) -> str:
         """Return a local filesystem path for tools that need a file (pdfplumber)."""
         normalized = key.replace("\\", "/").lstrip("/")

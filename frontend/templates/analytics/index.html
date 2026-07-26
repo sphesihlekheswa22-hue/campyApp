@@ -172,7 +172,12 @@
       }
 
       if (companies.length > 0) {
-        if (!select.disabled) select.value = companies[0].id;
+        const preselect = Utils.getParam('company');
+        if (preselect && companies.some(c => String(c.id) === preselect)) {
+          select.value = preselect;
+        } else if (!select.disabled) {
+          select.value = companies[0].id;
+        }
         loadAnalytics();
       }
 

@@ -12,7 +12,11 @@ client = TestClient(app)
 def test_health_endpoint():
     response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    data = response.json()
+    assert data["status"] in ("ok", "degraded")
+    assert "checks" in data
+    assert "database" in data["checks"]
+    assert "storage" in data["checks"]
 
 
 def test_login_invalid_credentials():

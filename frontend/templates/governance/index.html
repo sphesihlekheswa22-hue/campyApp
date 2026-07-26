@@ -217,7 +217,8 @@
           const current = sel.value;
           sel.innerHTML = '<option value="">All companies</option>' +
             companies.map(c => `<option value="${c.id}">${c.company_name}</option>`).join('');
-          sel.value = current;
+          const preselect = Utils.getParam('company_id');
+          sel.value = preselect && companies.some(c => String(c.id) === preselect) ? preselect : current;
         } catch { /* optional */ }
       }
     }
