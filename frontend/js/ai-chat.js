@@ -6,20 +6,25 @@ const AIChat = {
   messages: [],
 
   SUGGESTIONS: [
-    'Summarize our compliance gaps',
-    'Explain our risk score',
-    'How is our financial health?',
+    { text: 'Summarize our compliance gaps', icon: 'clipboard-check' },
+    { text: 'Explain our risk score', icon: 'shield-alert' },
+    { text: 'How is our financial health?', icon: 'trending-up' },
   ],
 
   init() {
     if (!Auth.isLoggedIn()) return;
 
+    this.root = document.getElementById('ai-chat-root');
+    this.fabWrap = document.getElementById('ai-chat-fab-wrap');
     this.fab = document.getElementById('ai-chat-fab');
+    this.panelWrap = document.getElementById('ai-chat-panel-wrap');
     this.panel = document.getElementById('ai-chat-panel');
     this.messagesEl = document.getElementById('ai-chat-messages');
     this.input = document.getElementById('ai-chat-input');
     this.sendBtn = document.getElementById('ai-chat-send');
     this.closeBtn = document.getElementById('ai-chat-close');
+    this.statusDot = document.getElementById('ai-chat-status-dot');
+    this.statusText = document.getElementById('ai-chat-status-text');
 
     if (!this.fab) return;
 
@@ -57,17 +62,30 @@ const AIChat = {
     } catch (_) {}
   },
 
+  setStatus(online, label) {
+    if (this.statusDot) {
+      this.statusDot.classList.toggle('offline', !online);
+    }
+    if (this.statusText) {
+      this.statusText.textContent = label;
+    }
+  },
+
   async checkStatus() {
     try {
       const status = await API.get('/chat/status');
       this.enabled = status.enabled;
-      if (!status.enabled) {
+      if (status.enabled) {
+        this.setStatus(true, 'Ready · Powered by AI');
+      } else {
+        this.setStatus(false, 'Offline · Configure API key');
         this.renderWelcome(
-          'AI assistant requires OPENAI_API_KEY on the server. You can still browse analytics manually.',
+          'AI requires OPENAI_API_KEY on the server. Analytics and compliance pages still work normally.',
         );
       }
     } catch (_) {
       this.enabled = false;
+      this.setStatus(false, 'Unavailable');
     }
   },
 
@@ -78,41 +96,61 @@ const AIChat = {
 
   openPanel() {
     this.open = true;
-    this.panel.classList.remove('hidden', 'ai-chat-closing');
+    this.panelWrap?.classList.remove('hidden');
+    this.panel?.classList.remove('ai-chat-closing');
     this.fab.classList.add('ai-chat-open');
-    this.fab.querySelector('[data-lucide]')?.setAttribute('data-lucide', 'chevron-down');
-    document.getElementById('ai-chat-fab-pulse')?.classList.add('hidden');
-    Layout.refreshIcons(this.fab);
-    setTimeout(() => this.input?.focus(), 200);
+    this.fabWrap?.classList.add('ai-chat-open');
+    const icon = this.fab.querySelector('[data-lucide]');
+    if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+    Layout.refreshIcons(this.fabWrap || this.fab);
+    setTimeout(() => this.input?.focus(), 220);
   },
 
   close() {
     this.open = false;
-    this.panel.classList.add('ai-chat-closing');
+    this.panel?.classList.add('ai-chat-closing');
     this.fab.classList.remove('ai-chat-open');
-    this.fab.querySelector('[data-lucide]')?.setAttribute('data-lucide', 'message-circle');
-    Layout.refreshIcons(this.fab);
+    this.fabWrap?.classList.remove('ai-chat-open');
+    const icon = this.fab.querySelector('[data-lucide]');
+    if (icon) icon.setAttribute('data-lucide', 'sparkles');
+    Layout.refreshIcons(this.fabWrap || this.fab);
     setTimeout(() => {
-      this.panel.classList.add('hidden');
-      this.panel.classList.remove('ai-chat-closing');
-      if (this.enabled) {
-        document.getElementById('ai-chat-fab-pulse')?.classList.remove('hidden');
-      }
-    }, 180);
+      this.panelWrap?.classList.add('hidden');
+      this.panel?.classList.remove('ai-chat-closing');
+    }, 200);
+  },
+
+  userInitials() {
+    const name = document.getElementById('user-name')?.textContent?.trim();
+    if (!name || name === 'User Name') return 'U';
+    const parts = name.split(/\s+/);
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase();
   },
 
   renderWelcome(note) {
     const suggestions = this.SUGGESTIONS.map(
-      (s) => `<button type="button" class="ai-chat-suggestion" data-prompt="${this._esc(s)}">${this._esc(s)}</button>`,
+      (s) => `
+        <button type="button" class="ai-chat-suggestion" data-prompt="${this._esc(s.text)}">
+          <span class="ai-chat-suggestion-icon"><i data-lucide="${s.icon}" class="w-3.5 h-3.5"></i></span>
+          <span>${this._esc(s.text)}</span>
+        </button>`,
     ).join('');
 
     this.messagesEl.innerHTML = `
-      <div class="ai-chat-bubble ai-chat-bubble-system">
-        <p class="mb-2">Hi! I can help with financial scores, governance, risk, and King IV / JSE compliance.</p>
-        ${note ? `<p class="text-amber-400/90 mb-2">${this._esc(note)}</p>` : ''}
-        <div class="text-left mt-3">${suggestions}</div>
+      <div class="ai-chat-welcome">
+        <div class="ai-chat-welcome-icon">
+          <i data-lucide="sparkles" class="w-7 h-7 text-blue-400"></i>
+        </div>
+        <h4>How can I help you today?</h4>
+        <p>Ask about financial health, governance scores, risk levels, or King IV &amp; JSE compliance.</p>
+        ${note ? `<div class="ai-chat-welcome-note">${this._esc(note)}</div>` : ''}
+        <p class="ai-chat-suggestions-label">Suggested questions</p>
+        ${suggestions}
       </div>`;
 
+    Layout.refreshIcons(this.messagesEl);
     this.messagesEl.querySelectorAll('.ai-chat-suggestion').forEach((btn) => {
       btn.addEventListener('click', () => {
         this.input.value = btn.dataset.prompt || '';
@@ -122,27 +160,51 @@ const AIChat = {
   },
 
   appendMessage(role, content) {
-    if (this.messagesEl.querySelector('.ai-chat-bubble-system')) {
+    if (this.messagesEl.querySelector('.ai-chat-welcome')) {
       this.messagesEl.innerHTML = '';
     }
-    const div = document.createElement('div');
-    div.className = `ai-chat-bubble ai-chat-bubble-${role === 'user' ? 'user' : 'assistant'}`;
-    div.textContent = content;
-    this.messagesEl.appendChild(div);
+
+    const row = document.createElement('div');
+    row.className = `ai-chat-row ${role === 'user' ? 'ai-chat-row-user' : ''}`;
+
+    const avatar = document.createElement('div');
+    if (role === 'user') {
+      avatar.className = 'ai-chat-msg-avatar ai-chat-msg-avatar-user';
+      avatar.textContent = this.userInitials();
+    } else {
+      avatar.className = 'ai-chat-msg-avatar ai-chat-msg-avatar-ai';
+      avatar.innerHTML = '<i data-lucide="sparkles" class="w-3.5 h-3.5"></i>';
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = `ai-chat-bubble ai-chat-bubble-${role === 'user' ? 'user' : 'assistant'}`;
+    bubble.textContent = content;
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    this.messagesEl.appendChild(row);
+    Layout.refreshIcons(row);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   },
 
   showTyping() {
-    const el = document.createElement('div');
-    el.id = 'ai-chat-typing';
-    el.className = 'ai-chat-bubble ai-chat-bubble-assistant ai-chat-typing';
-    el.innerHTML = '<span></span><span></span><span></span>';
-    this.messagesEl.appendChild(el);
+    const row = document.createElement('div');
+    row.id = 'ai-chat-typing-row';
+    row.className = 'ai-chat-row';
+    row.innerHTML = `
+      <div class="ai-chat-msg-avatar ai-chat-msg-avatar-ai">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+      </div>
+      <div class="ai-chat-bubble ai-chat-bubble-assistant ai-chat-typing">
+        <span></span><span></span><span></span>
+      </div>`;
+    this.messagesEl.appendChild(row);
+    Layout.refreshIcons(row);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   },
 
   hideTyping() {
-    document.getElementById('ai-chat-typing')?.remove();
+    document.getElementById('ai-chat-typing-row')?.remove();
   },
 
   async send() {
