@@ -308,3 +308,23 @@ class ReportExtractionSummary(BaseModel):
     governance_count: int
     financial_year: Optional[str] = None
     extraction_issues: list[str] = []
+
+
+class ChatHistoryMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    company_id: Optional[int] = None
+    history: list[ChatHistoryMessage] = []
+
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+class ChatStatusResponse(BaseModel):
+    enabled: bool
+    model: Optional[str] = None
