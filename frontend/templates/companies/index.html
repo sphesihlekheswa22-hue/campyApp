@@ -154,18 +154,8 @@
       </tbody>
     </table>
   </div>
-  <!-- Pagination placeholder -->
-  <div class="flex items-center justify-between p-4 border-t border-slate-700/30">
-    <p class="text-xs text-slate-500" id="pagination-info">Showing 0 results</p>
-    <div class="flex items-center gap-2">
-      <button class="btn-premium btn-secondary-glass p-2 disabled:opacity-30" disabled>
-        <i data-lucide="chevron-left" class="w-4 h-4"></i>
-      </button>
-      <button class="btn-premium btn-secondary-glass p-2 disabled:opacity-30" disabled>
-        <i data-lucide="chevron-right" class="w-4 h-4"></i>
-      </button>
-    </div>
-  </div>
+  <!-- Pagination -->
+  <div id="companies-pagination" class="flex items-center justify-between p-4 border-t border-slate-700/30"></div>
 </div>
 {% endblock %}
 
@@ -279,6 +269,8 @@
   };
 
   let companiesLoading = false;
+  let allCompanies = [];
+  const pager = Utils.createPager({ onChange: () => renderCompaniesPage() });
 
   function getCompanyFilters() {
     return {
@@ -302,9 +294,82 @@
 
   async function loadIndustryOptions() {
     try {
-      const all = Utils.unwrapList(await API.get('/companies/'));
+      const all = Utils.unwrapList(await API.get('/companies/?limit=500'));
       updateIndustryOptions(all);
     } catch (_) {}
+  }
+
+  function renderCompaniesPage() {
+    const companies = pager.slice(allCompanies);
+    const total = allCompanies.length;
+    document.getElementById('table-subtitle').textContent = `${total} compan${total === 1 ? 'y' : 'ies'} found`;
+    pager.render('companies-pagination');
+
+    const tbody = document.querySelector('#companies-table tbody');
+    const searchTerm = getCompanyFilters().search;
+
+    if (total === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-12 text-center">
+            <div class="flex flex-col items-center">
+              <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
+                <i data-lucide="search-x" class="w-8 h-8 text-slate-600"></i>
+              </div>
+              <p class="text-sm font-medium text-slate-400">No companies found</p>
+              <p class="text-xs text-slate-600 mt-1">${searchTerm ? 'Try adjusting your search terms' : 'Add your first company to get started'}</p>
+            </div>
+          </td>
+        </tr>`;
+      Layout.refreshIcons(document.getElementById('companies-table'));
+      return;
+    }
+
+    tbody.innerHTML = companies.map((c, index) => {
+      const statusConfig = {
+        active: { class: 'badge-glow', icon: 'check-circle-2', color: 'text-emerald-400' },
+        trial: { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', icon: 'clock', color: 'text-amber-400' },
+        pending: { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', icon: 'clock', color: 'text-amber-400' },
+        inactive: { class: 'bg-slate-800 text-slate-400 border border-slate-700/50', icon: 'pause-circle', color: 'text-slate-400' },
+        suspended: { class: 'bg-red-500/10 text-red-400 border border-red-500/20', icon: 'alert-circle', color: 'text-red-400' },
+      };
+      const status = statusConfig[c.subscription_status] || statusConfig.inactive;
+
+      return `<tr class="hover:bg-slate-800/30 transition-colors group" style="animation: slideUp 0.3s ease-out ${index * 0.04}s both;">
+        <td class="py-4 px-5">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/20 flex-shrink-0">
+              ${c.company_name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200 group-hover:text-blue-400 transition-colors">${c.company_name}</p>
+              ${c.website ? `<p class="text-xs text-slate-500">${c.website}</p>` : ''}
+            </div>
+          </div>
+        </td>
+        <td class="py-4 px-5"><span class="text-sm text-slate-400 font-mono">${c.registration_number}</span></td>
+        <td class="py-4 px-5"><span class="text-sm text-slate-400">${c.industry || '-'}</span></td>
+        <td class="py-4 px-5">
+          <span class="badge-premium ${status.class} inline-flex items-center gap-1.5">
+            <i data-lucide="${status.icon}" class="w-3 h-3 ${status.color}"></i>
+            ${c.subscription_status}
+          </span>
+        </td>
+        <td class="py-4 px-5">
+          <span class="text-sm text-slate-500 flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+            ${Utils.formatDate(c.created_at)}
+          </span>
+        </td>
+        <td class="py-4 px-5 text-right">
+          <a href="/companies/detail.html?id=${c.id}" class="btn-premium btn-secondary-glass px-3 py-1.5 text-xs inline-flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span>View</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </a>
+        </td>
+      </tr>`;
+    }).join('');
+    Layout.refreshIcons(document.getElementById('companies-table'));
   }
 
   async function loadCompanies() {
@@ -317,87 +382,16 @@
 
     try {
       const response = await API.get(`/companies/${query}`);
-      const companies = Utils.unwrapList(response);
-      const total = response?.total ?? companies.length;
+      allCompanies = Utils.unwrapList(response);
+      const total = response?.total ?? allCompanies.length;
 
-      // Update stats
       document.getElementById('stat-total').textContent = total;
-      document.getElementById('stat-active').textContent = companies.filter(c => c.subscription_status === 'active').length;
-      document.getElementById('stat-pending').textContent = companies.filter(c => c.subscription_status === 'trial').length;
-      document.getElementById('stat-reports').textContent = companies.reduce((sum, c) => sum + (c.report_count || 0), 0);
+      document.getElementById('stat-active').textContent = allCompanies.filter(c => c.subscription_status === 'active').length;
+      document.getElementById('stat-pending').textContent = allCompanies.filter(c => c.subscription_status === 'trial').length;
+      document.getElementById('stat-reports').textContent = allCompanies.reduce((sum, c) => sum + (c.report_count || 0), 0);
 
-      // Update subtitle
-      document.getElementById('table-subtitle').textContent = `${total} compan${total === 1 ? 'y' : 'ies'} found`;
-      document.getElementById('pagination-info').textContent = `Showing ${companies.length} of ${total} result${total !== 1 ? 's' : ''}`;
-
-      const tbody = document.querySelector('#companies-table tbody');
-      const searchTerm = getCompanyFilters().search;
-
-      if (companies.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="6" class="py-12 text-center">
-              <div class="flex flex-col items-center">
-                <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
-                  <i data-lucide="search-x" class="w-8 h-8 text-slate-600"></i>
-                </div>
-                <p class="text-sm font-medium text-slate-400">No companies found</p>
-                <p class="text-xs text-slate-600 mt-1">${searchTerm ? 'Try adjusting your search terms' : 'Add your first company to get started'}</p>
-              </div>
-            </td>
-          </tr>
-        `;
-      } else {
-        tbody.innerHTML = companies.map((c, index) => {
-          const statusConfig = {
-            active: { class: 'badge-glow', icon: 'check-circle-2', color: 'text-emerald-400' },
-            trial: { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', icon: 'clock', color: 'text-amber-400' },
-            pending: { class: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', icon: 'clock', color: 'text-amber-400' },
-            inactive: { class: 'bg-slate-800 text-slate-400 border border-slate-700/50', icon: 'pause-circle', color: 'text-slate-400' },
-            suspended: { class: 'bg-red-500/10 text-red-400 border border-red-500/20', icon: 'alert-circle', color: 'text-red-400' },
-          };
-          const status = statusConfig[c.subscription_status] || statusConfig['inactive'];
-
-          return `<tr class="hover:bg-slate-800/30 transition-colors group" style="animation: slideUp 0.3s ease-out ${index * 0.04}s both;">
-            <td class="py-4 px-5">
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/20 flex-shrink-0">
-                  ${c.company_name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-slate-200 group-hover:text-blue-400 transition-colors">${c.company_name}</p>
-                  ${c.website ? `<p class="text-xs text-slate-500">${c.website}</p>` : ''}
-                </div>
-              </div>
-            </td>
-            <td class="py-4 px-5">
-              <span class="text-sm text-slate-400 font-mono">${c.registration_number}</span>
-            </td>
-            <td class="py-4 px-5">
-              <span class="text-sm text-slate-400">${c.industry || '-'}</span>
-            </td>
-            <td class="py-4 px-5">
-              <span class="badge-premium ${status.class} inline-flex items-center gap-1.5">
-                <i data-lucide="${status.icon}" class="w-3 h-3 ${status.color}"></i>
-                ${c.subscription_status}
-              </span>
-            </td>
-            <td class="py-4 px-5">
-              <span class="text-sm text-slate-500 flex items-center gap-1.5">
-                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-                ${Utils.formatDate(c.created_at)}
-              </span>
-            </td>
-            <td class="py-4 px-5 text-right">
-              <a href="/companies/detail.html?id=${c.id}" class="btn-premium btn-secondary-glass px-3 py-1.5 text-xs inline-flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span>View</span>
-                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-              </a>
-            </td>
-          </tr>`;
-        }).join('');
-      }
-      Layout.refreshIcons(document.getElementById('companies-table'));
+      pager.reset();
+      renderCompaniesPage();
     } catch (err) {
       if (subtitle) subtitle.textContent = 'Failed to load companies';
       document.querySelector('#companies-table tbody').innerHTML = `
@@ -425,14 +419,15 @@
 
   window.loadCompanies = loadCompanies;
 
-  const applyCompanyFilters = Utils.debounce(() => loadCompanies(), 300);
+  const applyCompanyFilters = Utils.debounce(() => { pager.reset(); loadCompanies(); }, 300);
   document.getElementById('search').addEventListener('input', applyCompanyFilters);
-  document.getElementById('status-filter').addEventListener('change', loadCompanies);
-  document.getElementById('industry-filter').addEventListener('change', loadCompanies);
+  document.getElementById('status-filter').addEventListener('change', () => { pager.reset(); loadCompanies(); });
+  document.getElementById('industry-filter').addEventListener('change', () => { pager.reset(); loadCompanies(); });
   document.getElementById('clear-filters').addEventListener('click', () => {
     document.getElementById('search').value = '';
     document.getElementById('status-filter').value = '';
     document.getElementById('industry-filter').value = '';
+    pager.reset();
     loadCompanies();
   });
 

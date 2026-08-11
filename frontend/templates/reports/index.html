@@ -143,6 +143,7 @@
       </tbody>
     </table>
   </div>
+  <div id="reports-pagination" class="flex items-center justify-between p-4 border-t border-slate-700/30"></div>
 </div>
 {% endblock %}
 
@@ -160,6 +161,7 @@
     let allReports = [];
     let companyMap = {};
     const isOwner = Auth.canAccess(['platform_owner']);
+    const pager = Utils.createPager({ onChange: () => renderTable() });
 
     if (isOwner) {
       document.getElementById('company-filter-wrap').classList.remove('hidden');
@@ -199,6 +201,7 @@
         document.getElementById('stat-processing').textContent = allReports.filter(r => ['pending', 'processing'].includes(r.status)).length;
         document.getElementById('stat-failed').textContent = allReports.filter(r => r.status === 'failed').length;
 
+        pager.reset();
         renderTable();
       } catch (err) {
         Layout.showToast(err.message || 'Failed to load reports', 'error');
@@ -239,11 +242,17 @@
             ${workflow}
           </div>
         </td></tr>`;
+        pager.slice([]);
+        pager.render('reports-pagination');
+        Layout.refreshIcons();
         return;
       }
 
+      const pageItems = pager.slice(filtered);
+      pager.render('reports-pagination');
+
       const canManage = Auth.hasPermission('retry_extraction');
-      tbody.innerHTML = filtered.map(r => {
+      tbody.innerHTML = pageItems.map(r => {
         const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
         return `<tr class="hover:bg-slate-800/30 transition-colors group">
           <td class="py-4 px-5">
@@ -278,6 +287,7 @@
           </td>
         </tr>`;
       }).join('');
+      Layout.refreshIcons();
     }
 
     window.load = load;
@@ -303,7 +313,7 @@
     window.retryExtraction = retryExtraction;
     window.downloadReport = downloadReport;
 
-    document.getElementById('search').addEventListener('input', Utils.debounce(renderTable, 300));
+    document.getElementById('search').addEventListener('input', Utils.debounce(() => { pager.reset(); renderTable(); }, 300));
     document.getElementById('status-filter').addEventListener('change', load);
     document.getElementById('company-filter')?.addEventListener('change', load);
     document.getElementById('clear-filters').addEventListener('click', () => {

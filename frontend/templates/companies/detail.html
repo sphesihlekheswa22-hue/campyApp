@@ -152,6 +152,7 @@
         </div>
       </div>
     </div>
+    <div id="company-reports-pagination" class="flex items-center justify-between p-4 border-t border-slate-700/30"></div>
   </div>
 </div>
 {% endblock %}
@@ -192,6 +193,8 @@
   const canUpload = Auth.hasPermission('upload_reports');
   const canRunAnalysis = Auth.hasPermission('run_analytics');
   const canRetry = Auth.hasPermission('retry_extraction');
+  let companyReports = [];
+  const reportsPager = Utils.createPager({ onChange: () => renderReports(companyReports, false) });
   const govLink = `/governance/index.html${Utils.buildQuery({ company_id: id })}`;
   const analyticsLink = `/analytics/index.html${Utils.buildQuery({ company: id })}`;
 
@@ -428,14 +431,16 @@
   }
   window.retryExtraction = retryExtraction;
 
-  function renderReports(reports) {
+  function renderReports(reports, resetPage = true) {
+    companyReports = Array.isArray(reports) ? reports : [];
     const reportsCount = document.getElementById('reports-count');
     if (reportsCount) {
-      reportsCount.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
+      reportsCount.textContent = `${companyReports.length} report${companyReports.length !== 1 ? 's' : ''}`;
     }
-    renderWorkflowBanner(reports);
+    renderWorkflowBanner(companyReports);
+    if (resetPage) reportsPager.reset();
 
-    if (!reports.length) {
+    if (!companyReports.length) {
       document.getElementById('reports-list').innerHTML = `
         <div class="flex flex-col items-center justify-center py-12 text-center">
           <div class="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/30 flex items-center justify-center mb-4">
@@ -444,11 +449,16 @@
           <h4 class="text-sm font-medium text-slate-400">No reports yet</h4>
           <p class="text-xs text-slate-600 mt-1">${canUpload ? 'Use the upload section above to add your first PDF' : 'Ask your admin to upload an annual report'}</p>
         </div>`;
+      reportsPager.slice([]);
+      reportsPager.render('company-reports-pagination');
       Layout.refreshIcons();
       return;
     }
 
-    document.getElementById('reports-list').innerHTML = reports.map(r => {
+    const pageItems = reportsPager.slice(companyReports);
+    reportsPager.render('company-reports-pagination');
+
+    document.getElementById('reports-list').innerHTML = pageItems.map(r => {
       const filename = (r.file_path || '').split('/').pop() || `Report #${r.id}`;
       const retryBtn = canRetry && r.status === 'failed'
         ? `<button type="button" class="btn-premium btn-secondary-glass px-2 py-1 text-xs" onclick="retryExtraction(${r.id})">
