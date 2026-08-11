@@ -4,11 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}JSE Analytics Platform{% endblock %}</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(t === 'light' ? 'light' : 'dark');
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="/css/tailwind.css">
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/perf.css">
   <link rel="stylesheet" href="/css/ai-chat.css?v=2">
   <link rel="stylesheet" href="/css/brand.css?v=2">
+  <link rel="stylesheet" href="/css/theme.css?v=1">
 
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -617,6 +629,12 @@
         </div>
 
         <div class="flex items-center gap-2 lg:gap-4">
+          <!-- Theme mode -->
+          <button type="button" data-theme-toggle class="btn-secondary-glass theme-toggle px-3 py-2.5" aria-pressed="false">
+            <i data-lucide="sun" data-theme-icon class="w-4 h-4"></i>
+            <span data-theme-label class="theme-toggle-label hidden sm:inline">Light</span>
+          </button>
+
           <!-- Notifications -->
           <button class="btn-secondary-glass p-2.5 relative tooltip" data-tooltip="Notifications" onclick="Layout.openNotifications()">
             <i data-lucide="bell" class="w-5 h-5 text-slate-400"></i>
@@ -748,11 +766,13 @@
   <script src="/js/api.js?v=4"></script>
   <script src="/js/auth.js?v=4"></script>
   <script src="/js/utils.js?v=5"></script>
+  <script src="/js/theme.js?v=1"></script>
   <script src="/js/layout.js?v=8"></script>
   <script src="/js/ai-chat.js?v=2"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      if (typeof Theme !== 'undefined') Theme.init();
       if (typeof Layout !== 'undefined') Layout.refreshIcons();
       else if (typeof lucide !== 'undefined') lucide.createIcons();
     });

@@ -4,10 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}JSE Analytics Platform{% endblock %}</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(t === 'light' ? 'light' : 'dark');
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 
   <link rel="stylesheet" href="/css/tailwind.css">
   <link rel="stylesheet" href="/css/perf.css">
-  <link rel="stylesheet" href="/css/brand.css?v=1">
+  <link rel="stylesheet" href="/css/brand.css?v=2">
+  <link rel="stylesheet" href="/css/theme.css?v=1">
 
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -632,6 +644,10 @@
     <!-- Footer -->
     <div class="mt-8 text-center animate-fade-in" style="animation-delay: 0.3s;">
       <div class="flex items-center justify-center gap-2 mb-3">
+        <button type="button" data-theme-toggle class="btn-premium btn-secondary-glass theme-toggle px-3 py-2 text-xs">
+          <i data-lucide="sun" data-theme-icon class="w-4 h-4"></i>
+          <span data-theme-label class="theme-toggle-label">Light</span>
+        </button>
         <div class="security-badge">
           <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
           <span>256-bit SSL Secured</span>
@@ -650,7 +666,16 @@
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/utils.js"></script>
+  <script src="/js/theme.js?v=1"></script>
   <script src="/js/auth-ui.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof Theme !== 'undefined') Theme.init();
+      var y = document.getElementById('year');
+      if (y) y.textContent = new Date().getFullYear();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+  </script>
 
   {% block extra_js %}{% endblock %}
   {% block scripts %}{% endblock %}

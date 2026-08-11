@@ -1,0 +1,357 @@
+/**
+ * Light / dark theme overrides.
+ * Dark mode stays the default brand look.
+ * Light mode remaps surfaces + Tailwind slate utilities for readable contrast.
+ */
+
+html.light {
+  color-scheme: light;
+  --brand-ink: #eef2f7;
+  --brand-surface: #f7f9fc;
+  --brand-panel: #ffffff;
+  --brand-panel-soft: #ffffff;
+  --brand-border: rgba(15, 23, 42, 0.12);
+  --brand-border-strong: rgba(15, 118, 110, 0.28);
+  --brand-text: #0f172a;
+  --brand-muted: #475569;
+  --brand-faint: #64748b;
+  --brand-accent: #0f766e;
+  --brand-accent-deep: #0f766e;
+  --brand-accent-soft: rgba(15, 118, 110, 0.1);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-elevated: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+html.light body {
+  background: var(--brand-ink);
+  color: var(--brand-text);
+}
+
+html.light .bg-gradient-animated {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(15, 118, 110, 0.08), transparent 55%),
+    linear-gradient(160deg, #e8eef6 0%, #f4f7fb 45%, #eef2f7 100%);
+}
+
+html.light .sidebar-glass,
+html.light .header-glass {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: var(--brand-border);
+}
+
+html.light .card-premium,
+html.light .chart-card,
+html.light .kpi-card,
+html.light .auth-card {
+  background: #ffffff !important;
+  border-color: var(--brand-border) !important;
+  color: var(--brand-text);
+}
+
+html.light .card-premium:hover,
+html.light .kpi-card:hover {
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
+html.light .nav-link {
+  color: #475569;
+}
+
+html.light .nav-link:hover {
+  color: #0f172a;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+html.light .nav-link.active {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.12);
+}
+
+html.light .btn-secondary-glass {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+html.light .btn-secondary-glass:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+html.light .btn-primary-glow {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+html.light .search-premium {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0f172a;
+}
+
+html.light .search-premium:focus {
+  border-color: rgba(15, 118, 110, 0.5);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  background: #ffffff;
+}
+
+html.light .search-premium::placeholder {
+  color: #94a3b8;
+}
+
+html.light .badge-glow {
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.25);
+}
+
+html.light .brand-mark {
+  background: linear-gradient(145deg, #0f766e, #115e59);
+  color: #ecfeff;
+}
+
+html.light .page-hero h2,
+html.light .brand-title,
+html.light #sidebar-logo-row h2 {
+  color: #0f172a;
+}
+
+html.light .page-hero p,
+html.light .chart-subtitle,
+html.light .kpi-label {
+  color: #64748b;
+}
+
+html.light .kpi-strip {
+  background: #ffffff;
+  border-color: var(--brand-border);
+}
+
+html.light .kpi-strip .kpi-card {
+  border-color: var(--brand-border);
+}
+
+html.light .kpi-strip .kpi-value,
+html.light .chart-title {
+  color: #0f172a;
+}
+
+html.light .global-search-backdrop {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+html.light .global-search-panel {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+html.light .global-search-input-row input {
+  color: #0f172a;
+}
+
+html.light .global-search-item:hover,
+html.light .global-search-item.active {
+  background: rgba(15, 118, 110, 0.08);
+}
+
+html.light .global-search-item .text-slate-200,
+html.light .global-search-item span.block.text-sm {
+  color: #0f172a;
+}
+
+html.light .mobile-dock {
+  background: rgba(255, 255, 255, 0.98);
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+html.light .mobile-dock a {
+  color: #64748b;
+}
+
+html.light .mobile-dock a.active,
+html.light .mobile-dock a:hover {
+  color: #0f766e;
+}
+
+html.light .shimmer,
+html.light .skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+}
+
+html.light .divider-premium {
+  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.12), transparent);
+}
+
+html.light #breadcrumb-bar {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light footer,
+html.light .border-slate-700\/20,
+html.light .border-slate-700\/30 {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+/* Remap common Tailwind slate text colors for light mode */
+html.light .text-white:not(.btn-primary-glow):not(.brand-mark):not([class*="bg-gradient"]):not(.ai-chat-avatar *) {
+  color: #0f172a;
+}
+html.light .btn-primary-glow,
+html.light .btn-primary-glow *,
+html.light .brand-mark,
+html.light .brand-mark * {
+  color: #ecfeff !important;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #0f172a !important;
+}
+html.light .text-slate-300 {
+  color: #1e293b !important;
+}
+html.light .text-slate-400 {
+  color: #475569 !important;
+}
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+html.light .text-slate-600 {
+  color: #64748b !important;
+}
+
+/* Solid slate backgrounds → light surfaces */
+html.light .bg-slate-950,
+html.light .bg-slate-900 {
+  background-color: #eef2f7 !important;
+}
+html.light .bg-slate-800 {
+  background-color: #ffffff !important;
+}
+html.light .bg-slate-700 {
+  background-color: #e2e8f0 !important;
+}
+
+/* Opacity / soft slate backgrounds */
+html.light [class*="bg-slate-900/"],
+html.light [class*="bg-slate-800/"],
+html.light [class*="bg-slate-700/"] {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light [class*="border-slate-700/"],
+html.light [class*="border-slate-600/"],
+html.light [class*="border-slate-800/"] {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+html.light .hover\:bg-slate-800\/30:hover,
+html.light .hover\:bg-slate-800\/40:hover,
+html.light .hover\:bg-slate-800\/50:hover,
+html.light .hover\:bg-slate-800\/70:hover {
+  background-color: rgba(15, 118, 110, 0.06) !important;
+}
+
+html.light .hover\:text-blue-400:hover,
+html.light .group:hover .group-hover\:text-blue-400 {
+  color: #0f766e !important;
+}
+
+html.light .text-blue-400 {
+  color: #0369a1 !important;
+}
+html.light .text-emerald-400,
+html.light .text-green-400 {
+  color: #047857 !important;
+}
+html.light .text-amber-400,
+html.light .text-yellow-400 {
+  color: #b45309 !important;
+}
+html.light .text-red-400 {
+  color: #b91c1c !important;
+}
+html.light .text-purple-400,
+html.light .text-violet-400 {
+  color: #6d28d9 !important;
+}
+html.light .text-teal-100 {
+  color: #134e4a !important;
+}
+
+html.light .bg-teal-900\/80 {
+  background-color: rgba(15, 118, 110, 0.12) !important;
+}
+html.light .border-teal-500\/20 {
+  border-color: rgba(15, 118, 110, 0.25) !important;
+}
+
+/* Tables */
+html.light table thead,
+html.light .table-sticky thead {
+  background: #f8fafc !important;
+}
+html.light tr:hover {
+  background-color: rgba(15, 118, 110, 0.04);
+}
+
+/* Modals */
+html.light #modal-content,
+html.light [id$="-modal-content"],
+html.light .bg-slate-800.border {
+  background: #ffffff !important;
+  color: #0f172a;
+}
+
+/* Theme toggle control */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 5.5rem;
+  justify-content: center;
+}
+
+.theme-toggle-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+html.light #ai-chat-panel {
+  background: #ffffff !important;
+  color: #0f172a;
+}
+
+html.light .ai-chat-composer input,
+html.light #ai-chat-input {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Auth light */
+html.light .bg-mesh {
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(15, 118, 110, 0.1) 0%, transparent 45%),
+    linear-gradient(180deg, #e8eef6 0%, #f7f9fc 55%, #eef2f7 100%) !important;
+}
+
+html.light .orb {
+  opacity: 0.45;
+}
+
+html.light .input-premium {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+html.light .social-btn {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
