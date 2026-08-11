@@ -140,7 +140,14 @@ if FRONTEND_DIR.exists():
 
 
 @app.get("/api/health")
-def health():
+def health(deep: bool = False):
+    """Liveness probe for Render — keep default path fast (<5s).
+
+    Use /api/health?deep=true for database + storage checks.
+    """
+    if not deep:
+        return {"status": "ok", "env": settings.app_env}
+
     from sqlalchemy import text
 
     from app.database.session import SessionLocal

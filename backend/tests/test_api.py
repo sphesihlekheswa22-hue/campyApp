@@ -13,6 +13,14 @@ def test_health_endpoint():
     response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
+    assert data["status"] == "ok"
+    assert "env" in data
+
+
+def test_health_endpoint_deep():
+    response = client.get("/api/health?deep=true")
+    assert response.status_code == 200
+    data = response.json()
     assert data["status"] in ("ok", "degraded")
     assert "checks" in data
     assert "database" in data["checks"]

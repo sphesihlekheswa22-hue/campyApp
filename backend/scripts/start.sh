@@ -3,12 +3,14 @@ set -euo pipefail
 
 alembic upgrade head
 
-# One-time demo seed without Render Shell:
-# Set SEED_DEMO_DATA=true in Render → Manual Deploy → then set it back to false
-# (or delete the var) so the next restart does not wipe data again.
+# Keep startup fast so Render health checks pass.
+# Heavy demo seed must NOT block uvicorn (it takes minutes).
 if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
-  echo "[STARTUP] SEED_DEMO_DATA=true — resetting and seeding demo data"
-  python -m app.seed --reset
+  echo "[STARTUP] SEED_DEMO_DATA=true — seeding in background (non-blocking)"
+  (
+    python -m app.seed --reset
+    echo "[STARTUP] Background seed finished"
+  ) >> /tmp/seed-demo.log 2>&1 &
 elif [ "${APP_ENV:-development}" = "production" ]; then
   python -m app.seed --owner-only
 else
