@@ -122,6 +122,8 @@ const Layout = {
       this.refreshIcons(nav);
     }
 
+    this._initMobileDock(role, path);
+
     const roleLabel = document.getElementById('user-role-label');
     if (roleLabel && role) {
       roleLabel.textContent = Auth.getRoleLabel();
@@ -132,6 +134,30 @@ const Layout = {
 
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
+  },
+
+  _initMobileDock(role, path) {
+    const dock = document.getElementById('mobile-dock');
+    if (!dock) return;
+    const home = Auth.getDashboardUrl();
+    const homeLink = dock.querySelector('[data-dock="home"]');
+    if (homeLink) homeLink.setAttribute('href', home);
+
+    if (role === 'platform_owner') {
+      const reports = dock.querySelector('[data-dock="reports"]');
+      if (reports) {
+        reports.setAttribute('href', '/companies/index.html');
+        reports.querySelector('span').textContent = 'Cos';
+        reports.querySelector('[data-lucide]')?.setAttribute('data-lucide', 'building-2');
+      }
+    }
+
+    dock.querySelectorAll('a').forEach((a) => {
+      const href = a.getAttribute('href') || '';
+      const segment = href.replace('/index.html', '').replace('.html', '').split('?')[0];
+      a.classList.toggle('active', path === href || (segment && path.includes(segment)));
+    });
+    this.refreshIcons(dock);
   },
 
   async loadUserProfile() {

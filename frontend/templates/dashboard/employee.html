@@ -5,47 +5,47 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 {% endblock %}
 {% block content %}
-<!-- Welcome Section -->
-<div class="gradient-border p-6 mb-6 animate-fade-in">
-  <div class="flex items-center justify-between flex-wrap gap-4">
-    <div class="flex items-center gap-4">
-      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20">
-        <i data-lucide="user" class="w-7 h-7 text-white"></i>
+<!-- Welcome -->
+<div class="page-hero animate-fade-in">
+  <div class="flex items-start justify-between flex-wrap gap-4">
+    <div>
+      <h2>Hello, <span id="employee-name">there</span></h2>
+      <p>Review the latest report status, scores, and governance signals for your company.</p>
+      <div class="page-hero-actions">
+        <a href="/reports/index.html" class="btn-premium btn-primary-glow text-sm">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          View reports
+        </a>
+        <a href="/governance/index.html" class="btn-premium btn-secondary-glass text-sm">
+          <i data-lucide="shield" class="w-4 h-4"></i>
+          Governance
+        </a>
       </div>
-      <div>
-        <h2 class="text-2xl font-bold text-slate-100">Welcome, <span id="employee-name">Employee</span></h2>
-        <p class="text-slate-400 text-sm" id="employee-role">Loading role...</p>
-      </div>
+      <p class="text-xs text-slate-500 mt-3" id="employee-role">Loading role...</p>
     </div>
-    <div class="flex items-center gap-3">
-      <span class="badge-premium badge-glow">
-        <i data-lucide="clock" class="w-3 h-3 mr-1 inline"></i>
-        <span id="current-time">--:--</span>
-      </span>
-      <a href="/reports/index.html" class="btn-premium btn-primary-glow">
-        <i data-lucide="file-text" class="w-4 h-4"></i>
-        View Reports
-      </a>
-    </div>
+    <span class="badge-premium badge-glow self-start">
+      <i data-lucide="clock" class="w-3 h-3 mr-1 inline"></i>
+      <span id="current-time">--:--</span>
+    </span>
   </div>
 </div>
 
-<!-- KPI Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6" id="kpi-cards">
+<!-- KPI strip -->
+<div class="kpi-strip mb-6" id="kpi-cards" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
 </div>
 

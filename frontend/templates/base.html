@@ -8,11 +8,12 @@
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/perf.css">
   <link rel="stylesheet" href="/css/ai-chat.css?v=2">
+  <link rel="stylesheet" href="/css/brand.css?v=1">
 
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
@@ -60,9 +61,9 @@
     }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
+      font-family: var(--font-ui, 'DM Sans', system-ui, sans-serif);
+      background: #070b14;
+      color: #e8eef7;
       height: 100%;
       overflow: hidden;
     }
@@ -148,7 +149,7 @@
       transform: translateY(-50%);
       width: 3px;
       height: 0;
-      background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+      background: #14b8a6;
       border-radius: 0 4px 4px 0;
       transition: height 0.3s ease;
     }
@@ -213,14 +214,15 @@
     }
 
     .btn-primary-glow {
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: white;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+      background: #0f766e;
+      color: #ecfeff;
+      box-shadow: none;
     }
 
     .btn-primary-glow:hover {
-      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.2);
-      transform: translateY(-1px);
+      background: #0d9488;
+      box-shadow: none;
+      transform: none;
     }
 
     .btn-secondary-glass {
@@ -242,15 +244,15 @@
       padding: 4px 10px;
       font-size: 0.75rem;
       font-weight: 600;
-      border-radius: 9999px;
+      border-radius: 6px;
       letter-spacing: 0.02em;
     }
 
     .badge-glow {
-      background: rgba(59, 130, 246, 0.15);
-      color: #60a5fa;
-      border: 1px solid rgba(59, 130, 246, 0.2);
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.1);
+      background: rgba(20, 184, 166, 0.12);
+      color: #5eead4;
+      border: 1px solid rgba(20, 184, 166, 0.25);
+      box-shadow: none;
     }
 
     /* Status dot */
@@ -545,12 +547,12 @@
     <aside class="sidebar sidebar-glass z-50 flex flex-col" id="sidebar">
       <!-- Logo Section -->
       <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-700/30" id="sidebar-logo-row">
-        <div class="logo-glow relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 flex-shrink-0 cursor-pointer" onclick="Layout.toggleSidebar()" title="Expand sidebar">
-          <i data-lucide="bar-chart-3" class="w-5 h-5 text-white"></i>
+        <div class="brand-mark cursor-pointer" onclick="Layout.toggleSidebar()" title="Expand sidebar">
+          <i data-lucide="line-chart" class="w-5 h-5"></i>
         </div>
         <div class="sidebar-text transition-all duration-300 overflow-hidden flex-1 min-w-0">
-          <h2 class="text-lg font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">JSE Analytics</h2>
-          <p class="text-[11px] text-slate-500 font-medium tracking-wide uppercase">Bluemachines Platform</p>
+          <h2 class="text-lg text-slate-100 brand-title">JSE Analytics</h2>
+          <p class="text-[11px] text-slate-500 font-medium tracking-wide uppercase">Market intelligence</p>
         </div>
         <button id="sidebar-collapse-btn" type="button" class="sidebar-toggle-btn ml-auto p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-500 hover:text-slate-300 transition-colors hidden lg:flex" onclick="Layout.toggleSidebar()" title="Toggle sidebar">
           <i data-lucide="panel-left-close" class="w-4 h-4" id="sidebar-toggle-icon"></i>
@@ -575,7 +577,7 @@
         <!-- User Mini Profile -->
         <a href="/settings/index.html" id="sidebar-profile" class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/30 hover:border-slate-600/30 hover:bg-slate-800/70 transition-colors cursor-pointer group no-underline" title="Profile & settings" onclick="Layout.openProfile(event)">
           <div class="relative flex-shrink-0">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/20">
+            <div class="w-9 h-9 rounded-lg bg-teal-900/80 border border-teal-500/20 flex items-center justify-center text-teal-100 text-sm font-bold">
               <span id="user-initials">U</span>
             </div>
             <div class="status-dot online absolute -bottom-0.5 -right-0.5 border-2 border-slate-800"></div>
@@ -608,7 +610,7 @@
           </button>
 
           <div class="flex items-center gap-3">
-            <h1 class="text-lg font-semibold text-slate-100">{% block page_title %}Dashboard{% endblock %}</h1>
+            <h1 class="text-lg font-semibold text-slate-100 brand-title">{% block page_title %}Dashboard{% endblock %}</h1>
             <span class="badge-premium badge-glow hidden sm:inline-flex">Live</span>
           </div>
         </div>
@@ -658,6 +660,15 @@
       </div>
     </div>
   </div>
+
+  <!-- Mobile dock -->
+  <nav id="mobile-dock" class="mobile-dock lg:hidden" aria-label="Primary">
+    <a href="/" data-dock="home"><i data-lucide="layout-dashboard" class="w-5 h-5"></i><span>Home</span></a>
+    <a href="/reports/index.html" data-dock="reports"><i data-lucide="file-text" class="w-5 h-5"></i><span>Reports</span></a>
+    <a href="/analytics/index.html" data-dock="analytics"><i data-lucide="line-chart" class="w-5 h-5"></i><span>Analytics</span></a>
+    <a href="/governance/index.html" data-dock="governance"><i data-lucide="shield" class="w-5 h-5"></i><span>Gov</span></a>
+    <a href="/settings/index.html" data-dock="more"><i data-lucide="menu" class="w-5 h-5"></i><span>More</span></a>
+  </nav>
 
   <!-- Toast Container -->
   <div id="toast-container" class="fixed bottom-6 left-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
@@ -722,7 +733,7 @@
   <script src="/js/api.js?v=4"></script>
   <script src="/js/auth.js?v=4"></script>
   <script src="/js/utils.js?v=5"></script>
-  <script src="/js/layout.js?v=6"></script>
+  <script src="/js/layout.js?v=7"></script>
   <script src="/js/ai-chat.js?v=2"></script>
 
   <script>

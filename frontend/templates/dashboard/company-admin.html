@@ -6,53 +6,63 @@
 {% endblock %}
 {% block extra_js %}<script src="/js/charts.js"></script>{% endblock %}
 {% block content %}
-<!-- Company Header -->
-<div class="gradient-border p-6 mb-6 animate-fade-in">
-  <div class="flex items-center justify-between flex-wrap gap-4">
-    <div class="flex items-center gap-4">
-      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-        <i data-lucide="building-2" class="w-7 h-7 text-white"></i>
+<!-- Company header -->
+<div class="page-hero animate-fade-in">
+  <div class="flex items-start justify-between flex-wrap gap-4">
+    <div class="flex items-start gap-4">
+      <div class="brand-mark brand-mark--lg">
+        <i data-lucide="building-2" class="w-6 h-6"></i>
       </div>
       <div>
-        <h2 class="text-2xl font-bold text-slate-100" id="company-name">Loading...</h2>
-        <p class="text-slate-400 text-sm flex items-center gap-2">
+        <h2 id="company-name">Loading...</h2>
+        <p class="flex items-center gap-2 flex-wrap">
           <span id="company-reg">Loading...</span>
           <span class="w-1 h-1 rounded-full bg-slate-600"></span>
           <span id="company-sector">Loading...</span>
         </p>
+        <div class="page-hero-actions">
+          <a href="/reports/index.html" class="btn-premium btn-primary-glow text-sm">
+            <i data-lucide="upload" class="w-4 h-4"></i>
+            Upload report
+          </a>
+          <a href="/analytics/index.html" class="btn-premium btn-secondary-glass text-sm">
+            <i data-lucide="line-chart" class="w-4 h-4"></i>
+            View analytics
+          </a>
+        </div>
       </div>
     </div>
     <div class="flex items-center gap-3">
       <span id="risk-badge-container"></span>
-      <button class="btn-premium btn-primary-glow" onclick="exportReport()">
+      <button class="btn-premium btn-secondary-glass" onclick="exportReport()">
         <i data-lucide="download" class="w-4 h-4"></i>
-        Export Report
+        Export
       </button>
     </div>
   </div>
 </div>
 
-<!-- KPI Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="kpi-cards">
+<!-- KPI strip -->
+<div class="kpi-strip mb-6" id="kpi-cards">
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
 </div>
 

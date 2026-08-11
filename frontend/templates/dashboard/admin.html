@@ -5,45 +5,52 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 {% endblock %}
 {% block content %}
-<!-- Welcome Banner -->
-<div class="gradient-border p-6 mb-6 animate-fade-in">
-  <div class="flex items-center justify-between">
+<!-- Welcome -->
+<div class="page-hero animate-fade-in">
+  <div class="flex items-start justify-between flex-wrap gap-4">
     <div>
-      <h2 class="text-2xl font-bold text-slate-100 mb-1">Welcome back, <span id="welcome-name">Admin</span></h2>
-      <p class="text-slate-400 text-sm">Here's what's happening across your platform today</p>
+      <h2>Platform overview</h2>
+      <p>Monitor tenants, extraction health, and portfolio activity. Start with companies that need attention.</p>
+      <div class="page-hero-actions">
+        <a href="/companies/index.html" class="btn-premium btn-primary-glow text-sm">
+          <i data-lucide="building-2" class="w-4 h-4"></i>
+          Manage companies
+        </a>
+        <a href="/reports/index.html" class="btn-premium btn-secondary-glass text-sm">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          Review reports
+        </a>
+      </div>
     </div>
-    <div class="hidden md:flex items-center gap-2">
-      <span class="badge-premium badge-glow">
-        <i data-lucide="activity" class="w-3 h-3 mr-1 inline"></i>
-        Live
-      </span>
+    <div class="hidden md:flex items-center gap-2 pt-1">
+      <span class="badge-premium badge-glow">Live</span>
       <span class="text-xs text-slate-500" id="last-updated">Updated just now</span>
     </div>
   </div>
+  <p class="text-xs text-slate-500 mt-3">Signed in as <span id="welcome-name">Admin</span></p>
 </div>
 
-<!-- KPI Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="kpi-cards">
-  <!-- Skeleton loading state -->
+<!-- KPI strip -->
+<div class="kpi-strip mb-6" id="kpi-cards">
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
   <div class="kpi-card">
-    <div class="skeleton w-12 h-12 mb-4 rounded-xl"></div>
-    <div class="skeleton w-20 h-8 mb-2 rounded"></div>
-    <div class="skeleton w-32 h-4 rounded"></div>
+    <div class="skeleton w-9 h-9 mb-3 rounded-lg"></div>
+    <div class="skeleton w-16 h-6 mb-2 rounded"></div>
+    <div class="skeleton w-24 h-3 rounded"></div>
   </div>
 </div>
 
