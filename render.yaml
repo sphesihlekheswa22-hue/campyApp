@@ -53,3 +53,6 @@ services:
         sync: false
       - key: ALERT_EMAIL
         sync: false
+      # Set to "true" once to load demo data, then change back to "false"
+      - key: SEED_DEMO_DATA
+        value: "false"
