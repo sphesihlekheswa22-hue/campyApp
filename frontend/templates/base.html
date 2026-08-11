@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/perf.css">
   <link rel="stylesheet" href="/css/ai-chat.css?v=2">
-  <link rel="stylesheet" href="/css/brand.css?v=1">
+  <link rel="stylesheet" href="/css/brand.css?v=2">
 
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -560,10 +560,11 @@
       </div>
 
       <!-- Search -->
-      <div class="px-4 py-4 sidebar-text">
+      <div class="px-4 py-4 sidebar-text" id="sidebar-search-wrap">
         <div class="relative">
-          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
-          <input type="text" placeholder="Search..." class="search-premium" id="sidebar-search">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+          <input type="search" placeholder="Search… (Ctrl+K)" class="search-premium" id="sidebar-search" autocomplete="off" aria-autocomplete="list" aria-controls="global-search-results" aria-expanded="false">
+          <kbd class="hidden sm:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-600 border border-slate-700/50 rounded px-1.5 py-0.5 font-mono">⌘K</kbd>
         </div>
       </div>
 
@@ -661,6 +662,20 @@
     </div>
   </div>
 
+  <!-- Global search palette -->
+  <div id="global-search-overlay" class="global-search-overlay hidden" aria-hidden="true">
+    <div class="global-search-backdrop" data-close-search></div>
+    <div class="global-search-panel" role="dialog" aria-label="Global search">
+      <div class="global-search-input-row">
+        <i data-lucide="search" class="w-5 h-5 text-slate-500"></i>
+        <input type="search" id="global-search-input" placeholder="Search companies, reports, people, pages…" autocomplete="off">
+        <kbd class="text-[10px] text-slate-600 border border-slate-700/50 rounded px-1.5 py-0.5 font-mono">Esc</kbd>
+      </div>
+      <div id="global-search-results" class="global-search-results" role="listbox"></div>
+      <p class="global-search-hint">Jump to companies, reports, team members, and pages</p>
+    </div>
+  </div>
+
   <!-- Mobile dock -->
   <nav id="mobile-dock" class="mobile-dock lg:hidden" aria-label="Primary">
     <a href="/" data-dock="home"><i data-lucide="layout-dashboard" class="w-5 h-5"></i><span>Home</span></a>
@@ -733,7 +748,7 @@
   <script src="/js/api.js?v=4"></script>
   <script src="/js/auth.js?v=4"></script>
   <script src="/js/utils.js?v=5"></script>
-  <script src="/js/layout.js?v=7"></script>
+  <script src="/js/layout.js?v=8"></script>
   <script src="/js/ai-chat.js?v=2"></script>
 
   <script>

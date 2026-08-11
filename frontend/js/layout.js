@@ -134,6 +134,8 @@ const Layout = {
 
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    GlobalSearch.init();
   },
 
   _initMobileDock(role, path) {
@@ -353,6 +355,179 @@ const Layout = {
 
 window.Layout = Layout;
 
+const GlobalSearch = {
+  activeIndex: -1,
+  results: [],
+  requestId: 0,
+
+  init() {
+    const sidebarInput = document.getElementById('sidebar-search');
+    const paletteInput = document.getElementById('global-search-input');
+    const overlay = document.getElementById('global-search-overlay');
+    if (!paletteInput || !overlay) return;
+
+    const run = Utils.debounce((q) => this.search(q), 280);
+
+    sidebarInput?.addEventListener('focus', () => {
+      this.open(sidebarInput.value || '');
+    });
+    sidebarInput?.addEventListener('input', (e) => {
+      this.open(e.target.value);
+      run(e.target.value);
+    });
+
+    paletteInput.addEventListener('input', (e) => {
+      if (sidebarInput) sidebarInput.value = e.target.value;
+      run(e.target.value);
+    });
+
+    overlay.querySelectorAll('[data-close-search]').forEach((el) => {
+      el.addEventListener('click', () => this.close());
+    });
+
+    paletteInput.addEventListener('keydown', (e) => this.onKeyDown(e));
+  },
+
+  open(prefill = '') {
+    const overlay = document.getElementById('global-search-overlay');
+    const paletteInput = document.getElementById('global-search-input');
+    if (!overlay || !paletteInput) return;
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.getElementById('sidebar-search')?.setAttribute('aria-expanded', 'true');
+    paletteInput.value = prefill;
+    setTimeout(() => {
+      paletteInput.focus();
+      paletteInput.select();
+    }, 10);
+    this.search(prefill);
+    Layout.refreshIcons(overlay);
+  },
+
+  close() {
+    const overlay = document.getElementById('global-search-overlay');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.getElementById('sidebar-search')?.setAttribute('aria-expanded', 'false');
+    this.activeIndex = -1;
+  },
+
+  pageMatches(q) {
+    if (!q || q.length < 1) return [];
+    const role = Auth.getRole();
+    const menu = Layout.menus[role] || [];
+    const lower = q.toLowerCase();
+    return menu
+      .filter((item) => item.label.toLowerCase().includes(lower))
+      .slice(0, 5)
+      .map((item) => {
+        let href = item.href;
+        if (item.dynamic === 'company') {
+          const cid = sessionStorage.getItem('company_id');
+          if (cid) href = `/companies/detail.html?id=${cid}`;
+        }
+        return {
+          type: 'page',
+          title: item.label,
+          subtitle: 'Go to page',
+          href,
+          icon: item.icon,
+        };
+      });
+  },
+
+  async search(q) {
+    const query = (q || '').trim();
+    const box = document.getElementById('global-search-results');
+    if (!box) return;
+
+    if (query.length < 1) {
+      this.results = this.pageMatches('').slice(0, 0);
+      box.innerHTML = `<div class="global-search-empty">Type to search companies, reports, people, or pages</div>`;
+      return;
+    }
+
+    const req = ++this.requestId;
+    box.innerHTML = `<div class="global-search-empty">Searching…</div>`;
+
+    const pages = this.pageMatches(query);
+    let apiResults = [];
+    try {
+      const data = await API.get(`/search/${Utils.buildQuery({ q: query, limit: 8 })}`);
+      apiResults = Array.isArray(data?.results) ? data.results : [];
+    } catch {
+      apiResults = [];
+    }
+    if (req !== this.requestId) return;
+
+    this.results = [...pages, ...apiResults];
+    this.activeIndex = this.results.length ? 0 : -1;
+    this.render();
+  },
+
+  iconFor(type, fallback) {
+    const map = {
+      company: 'building-2',
+      report: 'file-text',
+      user: 'user',
+      page: fallback || 'layout-dashboard',
+    };
+    return map[type] || 'search';
+  },
+
+  render() {
+    const box = document.getElementById('global-search-results');
+    if (!box) return;
+    if (!this.results.length) {
+      box.innerHTML = `<div class="global-search-empty">No matches found</div>`;
+      Layout.refreshIcons(box);
+      return;
+    }
+
+    box.innerHTML = this.results.map((item, i) => `
+      <a href="${item.href}" class="global-search-item ${i === this.activeIndex ? 'active' : ''}" role="option" data-index="${i}">
+        <span class="global-search-item-icon">
+          <i data-lucide="${this.iconFor(item.type, item.icon)}" class="w-4 h-4"></i>
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm text-slate-200 truncate">${item.title}</span>
+          <span class="block text-xs text-slate-500 truncate">${item.subtitle || item.type}</span>
+        </span>
+        <span class="global-search-type">${item.type}</span>
+      </a>
+    `).join('');
+    Layout.refreshIcons(box);
+  },
+
+  onKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      this.close();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!this.results.length) return;
+      this.activeIndex = (this.activeIndex + 1) % this.results.length;
+      this.render();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!this.results.length) return;
+      this.activeIndex = (this.activeIndex - 1 + this.results.length) % this.results.length;
+      this.render();
+      return;
+    }
+    if (e.key === 'Enter' && this.activeIndex >= 0 && this.results[this.activeIndex]) {
+      e.preventDefault();
+      window.location.href = this.results[this.activeIndex].href;
+    }
+  },
+};
+window.GlobalSearch = GlobalSearch;
+
 const Toast = {
   show(type, message) {
     Layout.showToast(message, type);
@@ -366,12 +541,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    const searchInput = document.getElementById('sidebar-search');
-    if (searchInput) searchInput.focus();
+    if (Auth.isLoggedIn()) GlobalSearch.open(document.getElementById('sidebar-search')?.value || '');
   }
   if (e.key === 'Escape') {
+    GlobalSearch.close();
     Layout.closeModal();
     const sidebar = document.getElementById('sidebar');
     if (sidebar?.classList.contains('mobile-open')) Layout.toggleMobile();

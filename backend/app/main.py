@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import get_settings
 from app.routers import (
     auth, users, companies, reports, extractions, analytics, governance, audit,
-    notifications, scheduled_reports, files, chat,
+    notifications, scheduled_reports, files, chat, search,
 )
 
 settings = get_settings()
@@ -111,6 +111,7 @@ app.include_router(notifications.router, prefix=API_PREFIX)
 app.include_router(scheduled_reports.router, prefix=API_PREFIX)
 app.include_router(files.router, prefix=API_PREFIX)
 app.include_router(chat.router, prefix=API_PREFIX)
+app.include_router(search.router, prefix=API_PREFIX)
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
