@@ -10,10 +10,11 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_user, hash_password, require_roles
 from app.config import get_settings
 from app.database.session import get_db
-from app.models import User, UserRole
+from app.models import User, UserRole, NotificationType
 from app.schemas import PaginatedResponse, UserAdminUpdateRequest, UserCreateRequest, UserResponse, UserUpdateRequest
 from app.services.audit_service import log_audit
 from app.services.email_service import send_invite_email
+from app.services.notification_service import notify_user
 from app.services.storage_service import storage
 from app.utils.pagination import paginate
 
@@ -130,6 +131,15 @@ def create_user(
     db.refresh(user)
     if data.send_invite_email:
         send_invite_email(data.email, temp_password, data.name)
+    notify_user(
+        db,
+        user.id,
+        NotificationType.invite,
+        "Welcome to JSE Analytics",
+        "Your account is ready. Sign in and set a new password on first login.",
+        entity_ref=f"user:{user.id}",
+        company_id=user.company_id,
+    )
     log_audit(db, current_user.id, "create_user", f"user:{user.id}", request.client.host if request.client else None)
     return user
 

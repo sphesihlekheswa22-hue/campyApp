@@ -116,6 +116,7 @@ def run_extraction(report_id: int, report_year: str | None = None) -> tuple[bool
 
         from app.analytics.engine import run_company_analytics
         run_company_analytics(report.company_id, user_id=None)
+        db.refresh(report)
         _notify_extraction_result(db, report, success=True)
         return True, None
 

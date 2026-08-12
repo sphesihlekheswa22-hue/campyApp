@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/css/perf.css">
   <link rel="stylesheet" href="/css/ai-chat.css?v=2">
   <link rel="stylesheet" href="/css/brand.css?v=2">
-  <link rel="stylesheet" href="/css/theme.css?v=1">
+  <link rel="stylesheet" href="/css/theme.css?v=2">
 
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -458,7 +458,32 @@
       animation: slideUp 0.4s ease-out;
     }
 
-    /* Notification dot */
+    /* Notification badge */
+    .notif-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+      background: #ef4444;
+      border: 2px solid #0f172a;
+      border-radius: 9999px;
+      pointer-events: none;
+    }
+
+    html.light .notif-badge {
+      border-color: #ffffff;
+    }
+
+    /* Legacy dot — unused */
     .notif-dot {
       position: absolute;
       top: -2px;
@@ -638,7 +663,7 @@
           <!-- Notifications -->
           <button class="btn-secondary-glass p-2.5 relative tooltip" data-tooltip="Notifications" onclick="Layout.openNotifications()">
             <i data-lucide="bell" class="w-5 h-5 text-slate-400"></i>
-            <span class="notif-dot" id="notif-badge"></span>
+            <span class="notif-badge hidden" id="notif-badge" aria-hidden="true"></span>
           </button>
 
           <!-- Settings -->
@@ -767,7 +792,7 @@
   <script src="/js/auth.js?v=4"></script>
   <script src="/js/utils.js?v=5"></script>
   <script src="/js/theme.js?v=1"></script>
-  <script src="/js/layout.js?v=8"></script>
+  <script src="/js/layout.js?v=9"></script>
   <script src="/js/ai-chat.js?v=2"></script>
 
   <script>

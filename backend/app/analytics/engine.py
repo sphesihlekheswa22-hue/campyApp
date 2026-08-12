@@ -1,7 +1,8 @@
 import json
 
 from app.database.session import SessionLocal
-from app.models import AnalyticsResult, AnnualReport, Company, ExtractedFinancial, GovernanceNarrative
+from app.models import AnalyticsResult, AnnualReport, Company, ExtractedFinancial, GovernanceNarrative, NotificationType, UserRole
+from app.services.notification_service import notify_company_users
 
 
 def calculate_growth(current: float, previous: float) -> float:
@@ -129,6 +130,22 @@ def run_company_analytics(company_id: int, user_id: int | None = None) -> None:
 
         company = db.query(Company).filter(Company.id == company_id).first()
 
+        prev_result = (
+            db.query(AnalyticsResult)
+            .filter(
+                AnalyticsResult.company_id == company_id,
+                AnalyticsResult.analysis_type == "full_analysis",
+            )
+            .order_by(AnalyticsResult.created_at.desc())
+            .first()
+        )
+        prev_risk = None
+        if prev_result and prev_result.result_json:
+            try:
+                prev_risk = json.loads(prev_result.result_json).get("risk_classification")
+            except (json.JSONDecodeError, TypeError):
+                prev_risk = None
+
         results = {
             "trends": trends,
             "years": years,
@@ -156,6 +173,27 @@ def run_company_analytics(company_id: int, user_id: int | None = None) -> None:
         from app.services.audit_service import log_audit
         log_audit(db, user_id, "run_analytics", f"company:{company_id}", None)
         db.commit()
+
+        notify_company_users(
+            db,
+            company_id,
+            NotificationType.analytics_updated,
+            "Analytics updated",
+            f"Scores recalculated — overall {overall_score}, risk {risk_info['risk_classification']}.",
+            entity_ref=f"company:{company_id}",
+            roles=[UserRole.company_admin, UserRole.employee],
+        )
+        new_risk = risk_info["risk_classification"]
+        if prev_risk and prev_risk != new_risk:
+            notify_company_users(
+                db,
+                company_id,
+                NotificationType.risk_changed,
+                "Risk classification updated",
+                f"Risk changed from {prev_risk} to {new_risk}.",
+                entity_ref=f"company:{company_id}",
+                roles=[UserRole.company_admin, UserRole.employee],
+            )
     finally:
         db.close()
 

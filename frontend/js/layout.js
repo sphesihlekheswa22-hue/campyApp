@@ -131,6 +131,7 @@ const Layout = {
 
     this.loadUserProfile().catch(() => {});
     this.loadNotificationBadge().catch(() => {});
+    this.startNotificationPolling();
 
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
@@ -261,6 +262,40 @@ const Layout = {
     document.body.style.overflow = '';
   },
 
+  _notificationPollId: null,
+
+  _escapeHtml(text) {
+    return String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
+
+  notificationHref(entityRef) {
+    if (!entityRef) return null;
+    const [kind, id] = entityRef.split(':');
+    if (kind === 'report' && id) return `/reports/detail.html?id=${encodeURIComponent(id)}`;
+    if (kind === 'company' && id) return `/companies/detail.html?id=${encodeURIComponent(id)}`;
+    if (kind === 'user') return '/team/index.html';
+    if (kind === 'system') return Auth.getDashboardUrl();
+    return null;
+  },
+
+  startNotificationPolling() {
+    if (this._notificationPollId || !Auth.isLoggedIn()) return;
+    this._notificationPollId = setInterval(() => {
+      if (Auth.isLoggedIn()) this.loadNotificationBadge();
+    }, 60000);
+  },
+
+  stopNotificationPolling() {
+    if (this._notificationPollId) {
+      clearInterval(this._notificationPollId);
+      this._notificationPollId = null;
+    }
+  },
+
   async openNotifications() {
     try {
       const [list, count] = await Promise.all([
@@ -268,21 +303,29 @@ const Layout = {
         API.get('/notifications/unread-count'),
       ]);
       const items = Utils.unwrapList(list);
-      const body = items.length ? items.map(n => `
-        <div class="p-4 rounded-xl border border-slate-700/40 bg-slate-800/40 mb-3 ${n.is_read ? 'opacity-70' : ''}">
+      const body = items.length ? items.map((n) => {
+        const href = this.notificationHref(n.entity_ref);
+        const unread = !n.is_read;
+        return `
+        <button type="button"
+          class="notification-item w-full text-left p-4 rounded-xl border mb-3 transition-colors ${unread ? 'border-teal-500/25 bg-teal-500/5' : 'border-slate-700/40 bg-slate-800/40 opacity-80'}"
+          data-href="${href || ''}"
+          onclick="Layout.handleNotificationClick(event, ${n.id})">
           <div class="flex items-start justify-between gap-2">
-            <p class="text-sm font-medium text-slate-200">${n.title}</p>
+            <p class="text-sm font-medium text-slate-200">${this._escapeHtml(n.title)}</p>
             <span class="text-xs text-slate-500 whitespace-nowrap">${Utils.timeAgo(n.created_at)}</span>
           </div>
-          <p class="text-xs text-slate-400 mt-1">${n.message}</p>
-        </div>`).join('') : '<p class="text-sm text-slate-400">No notifications yet.</p>';
+          <p class="text-xs text-slate-400 mt-1">${this._escapeHtml(n.message)}</p>
+          ${href ? '<p class="text-xs text-teal-400/80 mt-2">Open →</p>' : ''}
+        </button>`;
+      }).join('') : '<p class="text-sm text-slate-400">No notifications yet.</p>';
 
       this.openModal(`
         <div class="p-6 max-w-lg">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-100">Notifications ${count.count ? `<span class="text-xs text-blue-400">(${count.count} unread)</span>` : ''}</h3>
+            <h3 class="text-lg font-semibold text-slate-100">Notifications ${count.count ? `<span class="text-xs text-teal-400">(${count.count} unread)</span>` : ''}</h3>
             <div class="flex gap-2">
-              ${count.count ? `<button type="button" class="text-xs text-blue-400 hover:text-blue-300" onclick="Layout.markAllNotificationsRead()">Mark all read</button>` : ''}
+              ${count.count ? `<button type="button" class="text-xs text-teal-400 hover:text-teal-300" onclick="Layout.markAllNotificationsRead()">Mark all read</button>` : ''}
               <button type="button" onclick="Layout.closeModal()" class="p-1.5 rounded-lg hover:bg-slate-700/50 text-slate-400">
                 <i data-lucide="x" class="w-5 h-5"></i>
               </button>
@@ -290,14 +333,35 @@ const Layout = {
           </div>
           <div class="max-h-96 overflow-y-auto">${body}</div>
         </div>`);
+      this.loadNotificationBadge();
     } catch (err) {
-      this.openModal(`<div class="p-6"><p class="text-sm text-slate-400">${err.message || 'Failed to load notifications'}</p></div>`);
+      this.openModal(`<div class="p-6"><p class="text-sm text-slate-400">${this._escapeHtml(err.message || 'Failed to load notifications')}</p></div>`);
     }
+  },
+
+  async handleNotificationClick(event, id) {
+    event.preventDefault();
+    const href = event.currentTarget?.dataset?.href || '';
+    await this.markNotificationRead(id, href || null);
+  },
+
+  async markNotificationRead(id, href) {
+    try {
+      await API.post(`/notifications/${id}/read`);
+    } catch (_) { /* optional */ }
+    await this.loadNotificationBadge();
+    if (href) {
+      this.closeModal();
+      window.location.href = href;
+      return;
+    }
+    this.openNotifications();
   },
 
   async markAllNotificationsRead() {
     try {
       await API.post('/notifications/read-all');
+      await this.loadNotificationBadge();
       this.closeModal();
       this.openNotifications();
     } catch (err) {
@@ -314,8 +378,15 @@ const Layout = {
       ]);
       const badge = document.getElementById('notification-badge') || document.getElementById('notif-badge');
       if (badge) {
-        badge.textContent = count > 99 ? '99+' : count;
-        badge.classList.toggle('hidden', !count);
+        if (count > 0) {
+          badge.textContent = count > 99 ? '99+' : String(count);
+          badge.classList.remove('hidden');
+          badge.setAttribute('aria-hidden', 'false');
+        } else {
+          badge.textContent = '';
+          badge.classList.add('hidden');
+          badge.setAttribute('aria-hidden', 'true');
+        }
       }
     } catch { /* optional */ }
   },
